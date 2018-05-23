@@ -307,3 +307,8 @@ caption {
   background: orange;
   text-decoration: none;
 }
+
+.bad {
+  background : red;
+  color: black;
+}

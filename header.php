@@ -15,84 +15,190 @@
 			var $message;
 
 			function verifyText () {
-
+				if(gettype($this->$entryValue) === "string"){
+					if($this->$entryValue === "" && $this->$required){
+						$this->requiredMessage();
+						$this->$error = true;
+					}
+					else{
+						$this->clearMessage();
+						$this->$error = false;
+					}
+				}
+				else{
+					$this->typeErrorMessage();
+				}
+				return true;
 			}
 
 			function verifyPassword () {
+				if($this->$entryValue === ""){
+					$this->requiredMessage();
+					$this->$error = true;
+				}
+				else if(strLen($this->$entryValue) < 8) {
+					$this->$message = "Password must be at least 8 characters";
+					$this->$error = true;
+				}
+				else{
+					$this->clearMessage();
+					$this->$error = false;
+				}
+				return $this->$error;
 
 			}
 
-			function verifySubmit () {
-
-			}
-
-			function verifyRadio () {
-
+			function verifyConfirm ($hostForm) {
+				if(gettype($this->$entryValue) === "string"){
+					foreach($hostForm->$entryList as $eItr){
+						if($eItr->$entryType === "password"){
+							if($this->$entryValue === $eItr->$entryValue){
+								$this->clearMessage();
+								$this->$error = false;
+								return $this->$error;
+							}
+							else{
+								$this->$message = 	"Password confirmation '" .
+													$this->$entryValue .
+													"' does not match password '" .
+													$eItr->$entryValue . "'";
+								$this->$error = true;
+								return $this->$error;
+							}
+						}
+					}
+				}
+				else{
+					$this->typeErrorMessage();
+				}
+				return $this->$error;
 			}
 
 			function verifyCheckbox() {
-				var $error = true;
-				if(gettype($entryValue) === "string"){
-					if($entryValue == $entryName) {
-						$entryValue = true;
+				var $this->$error = true;
+				if(gettype($this->$entryValue) === "string"){
+					if($this->$entryValue == $this->$entryName) {
+						$this->$entryValue = true;
 					}
 					else{
-						$entryValue = false;
+						$this->clearMessage();
+						$this->$entryValue = false;
 					}
-					$error = false;
+					$this->$error = false;
+				}
+				else{
+					$this->typeErrorMessage();
+				}
+				return $this->$error;
+			}
+
+			function verifyNumber () {
+				var $this->$error = true;
+				if(gettype($this->$entryValue) === "string"){
+					if($this->$entryValue === "" && $this->$required){
+						$this->requiredMessage();
+					}
+					else if(is_numeric($this->$entryValue)) {
+						$this->$error = false;
+						$this->$entryValue = (int) $this->$entryValue;
+					}
+					else{
+						$this->valueErrorMessage();
+					}
+				}
+				else{
+					$this->typeErrorMessage();
 				}
 				return $error;
 			}
 
-			function verifyNumber () {
-				var $error = true;
-				if(gettype($entryValue) === "string"){
-					if(is_numeric($entryValue)) {
-						$error = false;
-						$entryValue = (int) $entryValue;
-					}
-				}
-				return $error;
+			function clearMessage(){
+				$this->message = "";
+			}
+
+			function requiredMessage(){
+				$this->message = "Value error: no value for required entry '" .
+								  $this->$entryName . "'";
+			}
+
+			function valueErrorMessage(){
+				$this->$message =	"Value error: bad value '" .
+									$this->$entryValue .
+									"' used for " . $this->$entryType .
+									" entry " . $this->$entryName;
+			}
+
+			function typeErrorMessage(){
+				$this->$message =	"Type error: bad type '" .
+									gettype($this->$entryValue) .
+									"' used for " . $this->$entryType .
+									" entry " . $this->$entryName;
 			}
 
 			function makeSalt(){
 				return base64_encode(mcrypt_create_iv(12,MCRYPT_DEV_URANDOM));
 			}
 
+			function load() {
+				$this->$entryValue = preg_replace(	'/\s+/', '',
+													$_POST[$this->$entryName]);
+			}
+
 			function verify() {
-				if($entryValue == "text"){
-					return verifyText();
+				if($this->$entryValue == "text" || $this->$entryValue == "textarea"){
+					return $this->verifyText();
 				}
-				else if($entryValue == "password"){
-					return verifyPassword();
+				else if($this->$entryValue == "password"){
+					return $this->verifyPassword();
 				}
-				else if($entryValue == "submit"){
-					return verifySubmit();
+				else if($this->$entryValue == "confirm"){
+					return $this->verifyPassword($this);
 				}
-				else if($entryValue == "radio"){
-					return verifyRadio();
+				else if($this->$entryValue == "checkbox"){
+					return $this->verifyCheckbox();
 				}
-				else if($entryValue == "checkbox"){
-					return verifyCheckbox();
-				}
-				else if($entryValue == "number"){
-					return verifyNumber();
+				else if($this->$entryValue == "number"){
+					return $this->verifyNumber();
 				}
 				return true;
 			}
 
-			function generate() {
-
+			function generate($hostForm) {
+				if($this->$entryType === "textarea"){
+					echo "<textarea  rows='4' cols='50' " .
+							" name='" . $this->$entryName . "'" .
+							" form='" . $hostForm->$formName"'";
+					if($this->$error){
+						echo " class='bad' ";
+					}
+					echo ">\n";
+				}
+				else{
+					var $realType = ($this->$entryType === "confirm")?
+										"password" : $this->$entryType;
+					echo "<p>\n";
+					echo "<label for='" . $this->$entryName . "'>\n" .
+							$this->$entryName . ":</label>";
+					echo "<input" . " type='" . $realType . "'" .
+									" name='" . $this->$entryName . "'" .
+									" id='" . $this->$entryName . "'" .
+									" title='" . $this->$entryName . "'";
+					if($this->$error){
+						echo " class='bad' ";
+					}
+					echo ">\n";
+					echo "</p>\n";
+				}
 			}
 
 			function __construct($eName,$eType,$eValue,$eRequired,$eHidden) {
-				$entryName = $eName;
-				$entryType = $eType;
-				$entryValue = $eValue;
-				$required = $eRequired;
-				$hidden = $eHidden;
-				$error = false;
-				$message = "";
+				$this->$entryName = $eName;
+				$this->$entryType = $eType;
+				$this->$entryValue = $eValue;
+				$this->$required = $eRequired;
+				$this->$hidden = $eHidden;
+				$this->$error = false;
+				$this->$message = "";
 			}
 
 		}
@@ -106,26 +212,26 @@
 			var $error;
 
 			function loadValues() {
-				var $error = false;
-				foreach($entryList as $entry){
-					$error = $error && $entry->load();
+				var $this->$error = false;
+				foreach($this->$entryList as $entry){
+					$this->$error = $this->$error && $entry->load();
 				}
 			}
 
 			function verify() {
-				$error = false;
-				foreach($entryList as $entry) {
-					$error = $error && $entry->verify();
+				$this->$error = false;
+				foreach($this->$entryList as $entry) {
+					$this->$error = $this->$error && $entry->verify();
 				}
 			}
 
 			function process() {
-				if($error == false) {
+				if($this->$error == false) {
 					$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 					var $call = "CALL " . $formProc . " ( ";
 					var $val;
 					var $first = true;
-					foreach($entryList as $entry){
+					foreach($this->$entryList as $entry){
 						if($first){
 							$first = false;
 						}
@@ -142,9 +248,9 @@
 				}
 				else{
 					echo " <script> \n";
-					foreach($entryList as $entry) {
-						if($entryList->message != ""){
-							echo " alert(" . $entryList->message . ");\n";
+					foreach($this->$entryList as $entry) {
+						if($this->$entry->message != ""){
+							echo " alert(" . $entry->message . ");\n";
 						}
 					}
 					echo " </script>\n";
@@ -153,17 +259,25 @@
 			}
 
 			function generate() {
-				foreach($entryList as $entry) {
-					$entry->generate();
+				echo "<form method='post' id='" . $this->$formName . "'>\n";
+				echo "<fieldset>\n";
+				foreach($this->$entryList as $entry) {
+					$entry->generate($this);
 				}
+				echo "</fieldset>\n";
+				echo "<p>\n";
+				echo "<input type = 'submit'  value = 'submit' />";
+				echo "<input type = 'reset'  value = 'reset' />";
+				echo "</p>\n";
+				echo "</form>";
 			}
 
             function __construct($fName,$fProc,$fEntryList,$fAuthorized) {
-				$formName = $fName;
-				$formProc = $fProc;
-				$entryList = $fEntryList;
-				$authorized = $fAuthorized;
-				$error = false;
+				$this->$formName = $fName;
+				$this->$formProc = $fProc;
+				$this->$entryList = $fEntryList;
+				$this->$authorized = $fAuthorized;
+				$this->$error = false;
             }
 
 		}
@@ -180,17 +294,13 @@
 				return $row["resultText"];
 			}
 
-			function pageHasLog(){
-				$_SESSION["pageLog"] = "";
-			}
-
-			function pageNoLog(){
-				unset($_SESSION["pageLog"]);
-			}
-
 			function appendLog($aText){
-				if(isset($_SESSION["pageLog"]){
-					$_SESSION["pageLog"] .= aText;
+
+				if(isset($_SESSION["log"]) && $_SESSION["log"] !== NULL){
+					$_SESSION["log"] .= aText;
+				}
+				else{
+					$_SESSION["log"] = aText;
 				}
 			}
 
@@ -198,7 +308,7 @@
 			function getActiveForm(){
 				var $result;
 				var $fName = $_POST['formName'];
-				foreach($formList as $fItr){
+				foreach($this->$formList as $fItr){
 					if($fItr->formName == $fName){
 						$result = $fItr;
 						break;
@@ -269,57 +379,63 @@
 					die("Query failed");
 				}
 				echo "<table id='t01' border='1'>";
-				generateTableHeader($theResult);
-				generateTableContent($theResult);
+				$this->generateTableHeader($theResult);
+				$this->generateTableContent($theResult);
 				echo "<\table>";
 
 				mysqli_free_result($result);
 			}
 
-			function generateLog(){
-
-			}
-
 			function generateContent(){
 				var $formResult = NULL;
 				if(reqType == "POST"){
-					var $theForm = getActiveForm();
-					var $formResult = processForm($theForm);
+					var $theForm = $this->getActiveForm();
+					var $formResult = $this->processForm($theForm);
 				}
 
-				if($hasTable){
-					generateTable($formResult);
+				if($this->$hasTable){
+					$this->generateTable($formResult);
 				}
 				else{
-					if($hasLog){
+					if($this->$hasLog){
 						echo "<div class='left'>";
 					}
 					else{
 						echo "<div class='middle'>";
 					}
-					foreach($formList as $fItr){
+					foreach($this->$formList as $fItr){
 						$fItr->generate();
 					}
 					echo "<\div>";
-					if($hasLog){
+					if($this->$hasLog){
+						$this->appendLog($formResult);
 						echo "<div class='right'>";
-						echo ($formResult != NULL)? $formResult : "";
+						echo $_SESSION["log"];
 						echo "</div>";
 					}
 				}
 			}
 
 			function generatePage(){
-				generateHeader();
-				generateNavBar();
-				generateContent();
+				echo "<!DOCTYPE html>\n";
+				echo "<html>\n";
+				echo "<head>\n";
+				echo "<title>" . $siteName . "</title>";
+				echo "<link rel='stylesheet' href='index.css'>";
+				echo "</head>\n";
+				echo "<body>\n";
+				$this->generateHeader();
+				$this->generateNavBar();
+				$this->generateContent();
+				echo "</body>\n";
+				echo "</html>\n";
 			}
 
 			function __construct($sName,$fList,$hTable,$hLog) {
-				$siteName = $sName;
-				$formList = $fList;
-				$hasTable = $hTable;
-				$hasLog = $hLog;
+				$this->$siteName = $sName;
+				$this->$formList = $fList;
+				$this->$hasTable = $hTable;
+				$this->$hasLog = $hLog;
             }
 
 		}
