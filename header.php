@@ -44,37 +44,54 @@
 			}
 
 			function verifyCheckbox() {
-
+				var $error = true;
+				if(gettype($entryValue) === "string"){
+					if($entryValue == $entryName) {
+						$entryValue = true;
+					}
+					else{
+						$entryValue = false;
+					}
+					$error = false;
+				}
+				return $error;
 			}
 
 			function verifyNumber () {
+				var $error = true;
+				if(gettype($entryValue) === "string"){
+					if(is_numeric($entryValue)) {
+						$error = false;
+						$entryValue = (int) $entryValue;
+					}
+				}
+				return $error;
+			}
 
+			function makeSalt(){
+				return base64_encode(mcrypt_create_iv(12,MCRYPT_DEV_URANDOM));
 			}
 
 			function verify() {
-				switch($entryValue){
-					case "text":
-						return verifyText();
-						break;
-					case "password":
-						return verifyPassword();
-						break;
-					case "submit":
-						return verifySubmit();
-						break;
-					case "radio":
-						return verifyRadio();
-						break;
-					case "checkbox":
-						return verifyCheckbox();
-						break;
-					case "number":
-						return verifyNumber();
-						break;
-					default :
-						return true;
-						break;
+				if($entryValue == "text"){
+					return verifyText();
 				}
+				else if($entryValue == "password"){
+					return verifyPassword();
+				}
+				else if($entryValue == "submit"){
+					return verifySubmit();
+				}
+				else if($entryValue == "radio"){
+					return verifyRadio();
+				}
+				else if($entryValue == "checkbox"){
+					return verifyCheckbox();
+				}
+				else if($entryValue == "number"){
+					return verifyNumber();
+				}
+				return true;
 			}
 
 			function generate() {
@@ -101,8 +118,11 @@
 			var $authorized;
 			var $error;
 
-			function addEntry() {
-
+			function loadValues() {
+				var $error = false;
+				foreach($entryList as $entry){
+					$error = $error && $entry->load();
+				}
 			}
 
 			function verify() {
@@ -129,8 +149,9 @@
 						$call .= "'$val'";
 					}
 					$call .= " ); ";
+					var $result = mysqli_query($conn, $call)
 					mysqli_close($conn);
-					return
+					return $result;
 				}
 				else{
 					echo " <script> \n";
@@ -145,7 +166,9 @@
 			}
 
 			function generate() {
-
+				foreach($entryList as $entry) {
+					$entry->generate();
+				}
 			}
 
             function __construct($fName,$fProc,$fEntryList,$fAuthorized) {
@@ -158,23 +181,97 @@
 
 		}
 
-		function makeSalt(){
-			return base64_encode(mcrypt_create_iv(12,MCRYPT_DEV_URANDOM));
+		class AutoPage {
+
+			var $formList;
+			var $hasTable;
+			var	$hasLog;
+
+
 		}
 
-		function handleRequest($theForm) {
-			switch($_SERVER["REQUEST_METHOD"]){
-				case "POST"
-					$theForm->verify();
-					$theForm->process();
-					$theForm->generate();
+
+		function getActiveForm(){
+			return $_POST['formName'];
+		}
+
+
+		function handleRequest($formList) {
+			var $theForm = NULL;
+			var $activeForm = getActiveForm();
+			foreach($formList as $fItr){
+				if($fItr->formName == $activeForm){
+					$theForm = $fItr;
 					break;
-				case "GET":
-					$theForm->generate();
-					break;
+				}
 			}
+			var $result = NULL;
+
+			if($theForm != NULL){
+				var $reqType = $_SERVER["REQUEST_METHOD"];
+				if(reqType == "POST"){
+					$theForm->loadValues();
+					$theForm->verify();
+					$result = $theForm->process();
+					foreach($formList as $fItr){
+						$fItr->generate();
+					}
+					break;
+				}
+				else if(reqType == "GET"){
+					foreach($formList as $fItr){
+						$fItr->generate();
+					}
+					break;
+				}
+			}
+
 		}
 
+		function displayTable($tableHeader,$theResult) {
+			if (!$theResult) {
+				die("Query failed");
+			}
+
+			$fields_num = mysqli_num_fields($result);
+			echo "<h1>" . $tableHeader . ":</h1>";
+			echo "<table id='t01' border='1'><tr>";
+
+			// printing table headers
+			for($i=0; $i<$fields_num; $i++) {
+				$field = mysqli_fetch_field($result);
+				echo "<td><b>$field->name</b></td>";
+			}
+			echo "</tr>\n";
+			while($row = mysqli_fetch_row($result)) {
+				echo "<tr>";
+				foreach($row as $cell)
+					echo "<td>$cell</td>";
+				echo "</tr>\n";
+			}
+
+			mysqli_free_result($result);
+
+		}
+
+		function getText(){
+			$row = mysqli_fetch_row($result);
+			return $row["resultText"];
+		}
+
+		function pageHasLog(){
+			$_SESSION["pageLog"] = "";
+		}
+
+		function pageNoLog(){
+			unset($_SESSION["pageLog"]);
+		}
+
+		function appendLog($aText){
+            if(isset($_SESSION["pageLog"]){
+				$_SESSION["pageLog"] .= aText;
+            }
+		}
 
 	?>
 
