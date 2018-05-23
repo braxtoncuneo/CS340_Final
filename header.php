@@ -1,19 +1,6 @@
 
 
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-	<header>
-		Quest Database - <em>Welcome <span id="username"><?php echo $user;?></span>!</em>
-	</header>
-	<nav>
-		<ul>
-		<?php
-		foreach ($content as $page => $location){
-			echo "<li><a href='$location?user=".$user."' ".($page==$currentpage?" class='active'":"").">".$page."</a></li>";
-		}
-		?>
-		</ul>
-
-	</nav>
 
 	<?php
 
@@ -183,95 +170,160 @@
 
 		class AutoPage {
 
+			var $siteName;
 			var $formList;
 			var $hasTable;
 			var	$hasLog;
 
+			function getText(){
+				$row = mysqli_fetch_row($result);
+				return $row["resultText"];
+			}
 
-		}
+			function pageHasLog(){
+				$_SESSION["pageLog"] = "";
+			}
 
+			function pageNoLog(){
+				unset($_SESSION["pageLog"]);
+			}
 
-		function getActiveForm(){
-			return $_POST['formName'];
-		}
-
-
-		function handleRequest($formList) {
-			var $theForm = NULL;
-			var $activeForm = getActiveForm();
-			foreach($formList as $fItr){
-				if($fItr->formName == $activeForm){
-					$theForm = $fItr;
-					break;
+			function appendLog($aText){
+				if(isset($_SESSION["pageLog"]){
+					$_SESSION["pageLog"] .= aText;
 				}
 			}
-			var $result = NULL;
 
-			if($theForm != NULL){
-				var $reqType = $_SERVER["REQUEST_METHOD"];
-				if(reqType == "POST"){
-					$theForm->loadValues();
-					$theForm->verify();
-					$result = $theForm->process();
-					foreach($formList as $fItr){
-						$fItr->generate();
+
+			function getActiveForm(){
+				var $result;
+				var $fName = $_POST['formName'];
+				foreach($formList as $fItr){
+					if($fItr->formName == $fName){
+						$result = $fItr;
+						break;
 					}
-					break;
 				}
-				else if(reqType == "GET"){
-					foreach($formList as $fItr){
-						$fItr->generate();
+				return $result;
+			}
+
+			function processForm($theForm){
+				var $result = NULL;
+				if($theForm != NULL){
+					var $reqType = $_SERVER["REQUEST_METHOD"];
+					if(reqType == "POST"){
+						$theForm->loadValues();
+						$theForm->verify();
+						$result = $theForm->process();
+						break;
 					}
-					break;
 				}
+				return $result;
 			}
 
-		}
 
-		function displayTable($tableHeader,$theResult) {
-			if (!$theResult) {
-				die("Query failed");
+			function generateHeader(){
+				echo 	"<header>\n" .
+						$siteName .
+						"";
+
+				if(isset($_SESSION["username"])){
+					echo	" - <em> Welcome <span id='username'>" .
+							$_SESSION["username"] .
+							"</span>!</em>";
+				}
+				echo	"</header>";
 			}
 
-			$fields_num = mysqli_num_fields($result);
-			echo "<h1>" . $tableHeader . ":</h1>";
-			echo "<table id='t01' border='1'><tr>";
-
-			// printing table headers
-			for($i=0; $i<$fields_num; $i++) {
-				$field = mysqli_fetch_field($result);
-				echo "<td><b>$field->name</b></td>";
+			function generateNavBar(){
+				echo "<nav> <ul> ";
+				foreach ($content as $page => $location){
+					echo	"<li><a href='$location' ".
+							($page==$currentpage?" class='active'":"").
+							">".$page."</a></li>";
+				}
+				echo "</ul> </nav>";
 			}
-			echo "</tr>\n";
-			while($row = mysqli_fetch_row($result)) {
+
+			function generateTableHeader($theResult){
+				$fields_num = mysqli_num_fields($theResult);
 				echo "<tr>";
-				foreach($row as $cell)
-					echo "<td>$cell</td>";
+				for($i=0; $i<$fields_num; $i++) {
+					$field = mysqli_fetch_field($theResult);
+					echo "<td><b>$field->name</b></td>";
+				}
 				echo "</tr>\n";
 			}
 
-			mysqli_free_result($result);
+			function generateTableContent($theResult){
+				while($row = mysqli_fetch_row($theResult)) {
+					echo "<tr>";
+					foreach($row as $cell)
+						echo "<td>$cell</td>";
+					echo "</tr>\n";
+				}
+			}
 
-		}
+			function generateTable($theResult) {
+				if (!$theResult) {
+					die("Query failed");
+				}
+				echo "<table id='t01' border='1'>";
+				generateTableHeader($theResult);
+				generateTableContent($theResult);
+				echo "<\table>";
 
-		function getText(){
-			$row = mysqli_fetch_row($result);
-			return $row["resultText"];
-		}
+				mysqli_free_result($result);
+			}
 
-		function pageHasLog(){
-			$_SESSION["pageLog"] = "";
-		}
+			function generateLog(){
 
-		function pageNoLog(){
-			unset($_SESSION["pageLog"]);
-		}
+			}
 
-		function appendLog($aText){
-            if(isset($_SESSION["pageLog"]){
-				$_SESSION["pageLog"] .= aText;
+			function generateContent(){
+				var $formResult = NULL;
+				if(reqType == "POST"){
+					var $theForm = getActiveForm();
+					var $formResult = processForm($theForm);
+				}
+
+				if($hasTable){
+					generateTable($formResult);
+				}
+				else{
+					if($hasLog){
+						echo "<div class='left'>";
+					}
+					else{
+						echo "<div class='middle'>";
+					}
+					foreach($formList as $fItr){
+						$fItr->generate();
+					}
+					echo "<\div>";
+					if($hasLog){
+						echo "<div class='right'>";
+						echo ($formResult != NULL)? $formResult : "";
+						echo "</div>";
+					}
+				}
+			}
+
+			function generatePage(){
+				generateHeader();
+				generateNavBar();
+				generateContent();
+			}
+
+			function __construct($sName,$fList,$hTable,$hLog) {
+				$siteName = $sName;
+				$formList = $fList;
+				$hasTable = $hTable;
+				$hasLog = $hLog;
             }
+
 		}
+
 
 	?>
 
