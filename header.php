@@ -1,5 +1,4 @@
-
-	<?php
+<?php
 	
 		class AutoEntry {
 
@@ -144,8 +143,7 @@
 			}
 
 			function load() {
-				$this->$entryValue = preg_replace(	'/\s+/', '',
-													$_POST[$this->$entryName]);
+				$this->$entryValue = preg_replace(	'/\s+/', '', $_POST[$this->$entryName]);
 			}
 			
 
@@ -239,29 +237,31 @@
 			
 			
 			function loadValues() {
-				$this->$error = false;
-				foreach($this->$entryList as $entry){
-					$this->$error = $this->$error && $entry->load();
+				$this->error = false;
+				foreach($this->entryList as $entry){
+					$this->error = $this->$error && $entry->load();
 				}
 			}
 			
 			
 			function verify() {
-				$this->$error = false;
-				foreach($this->$entryList as $entry) {
-					$this->$error = $this->$error && $entry->verify();
+				$this->error = false;
+				foreach($this->entryList as $entry) {
+					$this->error = $this->error && $entry->verify();
 				}
 			}
 			
 			function process() {
-				if($this->$error == false) {
+
+				$aKey = $this->formName . "alert";
+				if($this->error == false) {
 					
 					$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 					
 					$call = "CALL " . $formProc . " ( ";
 					$val;
 					$first = true;
-					foreach($this->$entryList as $entry){
+					foreach($this->entryList as $entry){
 						if($first){
 							$first = false;
 						}
@@ -269,24 +269,29 @@
 							$call .= " , ";
 						}
 						$val = $entry->entryValue;
-						$call .= "'$val'";
+						$call .= " " . $val . " ";
 					}
 					$call .= " ); ";
 					$result = mysqli_query($conn, $call);
+					if(!$result){
+						$_SESSION[$aKey] = "<script>" .
+						"alert('" . mysqli_error($conn) . "')" .
+						"</script>";
+					}
 					mysqli_close($conn);
 					return $result;
 					
 					return NULL;
 				}
 				else{
-					
-					echo " <script> \n";
-					foreach($this->$entryList as $entry) {
-						if($this->$entry->message !== ""){
-							echo " alert(" . $entry->message . ");\n";
+					$_SESSION[$aKey] = "";	
+					$_SESSION[$aKey] .= " <script> \n";
+					foreach($this->entryList as $entry) {
+						if($this->entry->message !== ""){
+							$_SESSION[$aKey] .= " alert('" . $entry->message . "');\n";
 						}
 					}
-					echo " </script>\n";
+					$_SESSION[$aKey] .= " </script>\n";
 					
 					return NULL;
 				}
@@ -299,6 +304,8 @@
 				foreach($this->entryList as $entry) {
 					$entry->generate($this);
 				}
+				echo "<input hidden type='hidden' name='formName' " . 
+					" value='" . $this->formName . "'> </input>";
 				echo "</fieldset>\n";
 				echo "<p>\n";
 				echo "<input type = 'submit'  value = 'submit' />";
@@ -320,6 +327,7 @@
 		class AutoPage {
 
 			var $siteName;
+			var $pageName;
 			var $formList;
 			var $navList;
 			var $hasTable;
@@ -332,20 +340,21 @@
 
 			function appendLog($aText){
 
-				if(isset($_SESSION["log"]) && $_SESSION["log"] !== NULL){
-					$_SESSION["log"] .= aText;
+				if(isset($_SESSION[$this->pageName . "log"]) && 
+						$_SESSION[$this->pageName . "log"] !== NULL){
+					$_SESSION[$this->pageName . "log"] .= aText;
 				}
 				else{
-					$_SESSION["log"] = aText;
+					$_SESSION[$this->pageName . "log"] = aText;
 				}
 			}
 
 			
 			function getActiveForm(){
 				$result;
-				$fName = $_POST['formName'];
-				foreach($this->$formList as $fItr){
-					if($fItr->formName == $fName){
+				$fName = $_POST["formName"];
+				foreach($this->formList as $fItr){
+					if($fItr->formName === $fName){
 						$result = $fItr;
 						break;
 					}
@@ -358,7 +367,7 @@
 				$result = NULL;
 				if($theForm != NULL){
 					$reqType = $_SERVER["REQUEST_METHOD"];
-					if(reqType == "POST"){
+					if($reqType === "POST"){
 						$theForm->loadValues();
 						$theForm->verify();
 						$result = $theForm->process();
@@ -426,9 +435,19 @@
 			
 			function generateContent(){
 				$formResult = NULL;
-				if(reqType == "POST"){
-					$theForm = $this->getActiveForm();
-					$formResult = $this->processForm($theForm);
+				$reqType = $_SERVER["REQUEST_METHOD"];
+				echo $reqType;
+				
+				if($reqType === "POST"){
+					//$theForm = $this->getActiveForm();
+					//$formResult = $this->processForm($theForm);
+					// Then we will unset the session and redirect back
+					//unset($_SESSION['postdata']);
+					// This is to display our notification
+					//$_SESSION['success'] = true;
+					// And there we go again...
+					//header("Location: ".$_SERVER['REQUEST_URI']);
+					//exit();
 				}
 
 				if($this->hasTable){
@@ -448,7 +467,7 @@
 					if($this->hasLog){
 						$this->appendLog($formResult);
 						echo "<div class='right'>";
-						echo $_SESSION["log"];
+						echo $_SESSION[$this->pageName . "log"];
 						echo "</div>";
 					}
 				}
@@ -456,22 +475,42 @@
 			
 
 			function generatePage(){
-				echo "<!DOCTYPE html>\n";
-				echo "<html>\n";
-				echo "<head>\n";
-				echo "<title>" . $this->siteName . "</title>";
-				echo "<link rel='stylesheet' href='index.css'>";
-				echo "</head>\n";
-				echo "<body>\n";
-				$this->generateHeader();
-				$this->generateNavBar();
-				$this->generateContent();
-				echo "</body>\n";
-				echo "</html>\n";
+				if($_POST){
+					$theForm = $this->getActiveForm();
+					$_SESSION["formName"] = $theForm->formName;
+					$formResult = false;//$this->processForm();
+					if($formResult){
+						if($this->hasLog){
+							$logText = mysqli_fetch_row($formResult)["logText"];
+							$_SESSION[$this->pageName . "log"] = $logText;
+						}
+						else if($this->hasTable){
+							$_SESSION[$this->pageName . "table"] = $formResult;
+						}
+					}
+					header("Location: " . $_SERVER["REQUEST_URI"],true,301);
+					exit();
+				}
+				else{
+					echo "<!DOCTYPE html>\n";
+					echo "<html>\n";
+					echo "<head>\n";
+					echo "<title>" . $this->siteName . "</title>";
+					echo "<link rel='stylesheet' href='index.css'>";
+					echo "</head>\n";
+					echo "<body>\n";
+					echo "--> " . $_SESSION["formName"] . "<--";
+					$this->generateHeader();
+					$this->generateNavBar();
+					$this->generateContent();
+					echo "</body>\n";
+					echo "</html>\n";
+				}
 			}
 
-			function __construct($sName,$fList,$nList,$hTable,$hLog) {
+			function __construct($sName,$pName,$fList,$nList,$hTable,$hLog) {
 				$this->siteName = $sName;
+				$this->pageName = $pName;
 				$this->formList = $fList;
 				$this->navList = $nList;
 				$this->hasTable = $hTable;
@@ -481,5 +520,4 @@
 	}
 
 	
-	?>
-
+?>
