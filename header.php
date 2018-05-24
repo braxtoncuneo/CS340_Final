@@ -1,9 +1,6 @@
 
-
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-
 	<?php
-
+	
 		class AutoEntry {
 
 			var $entryName;
@@ -13,7 +10,8 @@
 			var $hidden;
 			var $error;
 			var $message;
-
+			
+			
 			function verifyText () {
 				if(gettype($this->$entryValue) === "string"){
 					if($this->$entryValue === "" && $this->$required){
@@ -30,7 +28,7 @@
 				}
 				return true;
 			}
-
+			
 			function verifyPassword () {
 				if($this->$entryValue === ""){
 					$this->requiredMessage();
@@ -47,7 +45,7 @@
 				return $this->$error;
 
 			}
-
+			
 			function verifyConfirm ($hostForm) {
 				if(gettype($this->$entryValue) === "string"){
 					foreach($hostForm->$entryList as $eItr){
@@ -73,10 +71,11 @@
 				}
 				return $this->$error;
 			}
-
+			
 			function verifyCheckbox() {
-				var $this->$error = true;
+				$this->$error = true;
 				if(gettype($this->$entryValue) === "string"){
+					
 					if($this->$entryValue == $this->$entryName) {
 						$this->$entryValue = true;
 					}
@@ -84,6 +83,8 @@
 						$this->clearMessage();
 						$this->$entryValue = false;
 					}
+					
+					
 					$this->$error = false;
 				}
 				else{
@@ -91,9 +92,10 @@
 				}
 				return $this->$error;
 			}
-
+			
+			
 			function verifyNumber () {
-				var $this->$error = true;
+				$this->$error = true;
 				if(gettype($this->$entryValue) === "string"){
 					if($this->$entryValue === "" && $this->$required){
 						$this->requiredMessage();
@@ -111,6 +113,8 @@
 				}
 				return $error;
 			}
+
+			
 
 			function clearMessage(){
 				$this->message = "";
@@ -143,6 +147,7 @@
 				$this->$entryValue = preg_replace(	'/\s+/', '',
 													$_POST[$this->$entryName]);
 			}
+			
 
 			function verify() {
 				if($this->$entryValue == "text" || $this->$entryValue == "textarea"){
@@ -162,75 +167,100 @@
 				}
 				return true;
 			}
-
+			
 			function generate($hostForm) {
-				if($this->$entryType === "textarea"){
+				if($this->entryType === "textarea"){
+					
+					echo "<p>\n";
+					echo "<label for='" . $this->entryName . "'>\n" .
+							$this->entryName . ":</label>";
 					echo "<textarea  rows='4' cols='50' " .
-							" name='" . $this->$entryName . "'" .
-							" form='" . $hostForm->$formName"'";
-					if($this->$error){
+							" name='" . $this->entryName . "'" .
+							" form='" . $hostForm->formName . "'";
+					if($this->error){
 						echo " class='bad' ";
 					}
 					echo ">\n";
+					echo "</textarea>\n";
+					echo "</p>\n";
+					
 				}
 				else{
-					var $realType = ($this->$entryType === "confirm")?
-										"password" : $this->$entryType;
+					
+					$realType;
+					if( $this->entryType === "confirm" ){
+						$realType = "password";
+					}
+					else{
+						$realType = $this->entryType;
+					}
+					
 					echo "<p>\n";
-					echo "<label for='" . $this->$entryName . "'>\n" .
-							$this->$entryName . ":</label>";
+					echo "<label for='" . $this->entryName . "'>\n" .
+							$this->entryName . ":</label>";
 					echo "<input" . " type='" . $realType . "'" .
-									" name='" . $this->$entryName . "'" .
-									" id='" . $this->$entryName . "'" .
-									" title='" . $this->$entryName . "'";
-					if($this->$error){
+									" name='" . $this->entryName . "'" .
+									" id='" . $this->entryName . "'" .
+									" title='" . $this->entryName . "'";
+					if($this->error){
 						echo " class='bad' ";
 					}
 					echo ">\n";
 					echo "</p>\n";
+					
+						
 				}
 			}
+			
 
 			function __construct($eName,$eType,$eValue,$eRequired,$eHidden) {
-				$this->$entryName = $eName;
-				$this->$entryType = $eType;
-				$this->$entryValue = $eValue;
-				$this->$required = $eRequired;
-				$this->$hidden = $eHidden;
-				$this->$error = false;
-				$this->$message = "";
+				$this->entryName = $eName;
+				$this->entryType = $eType;
+				$this->entryValue = $eValue;
+				$this->required = $eRequired;
+				$this->hidden = $eHidden;
+				$this->error = false;
+				$this->message = "";
 			}
+			
 
 		}
 
+		
+
 		class AutoForm {
 
+			
 			var $formName;
 			var $formProc;
 			var $entryList;
 			var $authorized;
 			var $error;
-
+			
+			
 			function loadValues() {
-				var $this->$error = false;
+				$this->$error = false;
 				foreach($this->$entryList as $entry){
 					$this->$error = $this->$error && $entry->load();
 				}
 			}
-
+			
+			
 			function verify() {
 				$this->$error = false;
 				foreach($this->$entryList as $entry) {
 					$this->$error = $this->$error && $entry->verify();
 				}
 			}
-
+			
 			function process() {
 				if($this->$error == false) {
+					
 					$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-					var $call = "CALL " . $formProc . " ( ";
-					var $val;
-					var $first = true;
+					
+					$call = "CALL " . $formProc . " ( ";
+					$val;
+					$first = true;
 					foreach($this->$entryList as $entry){
 						if($first){
 							$first = false;
@@ -242,26 +272,31 @@
 						$call .= "'$val'";
 					}
 					$call .= " ); ";
-					var $result = mysqli_query($conn, $call)
+					$result = mysqli_query($conn, $call);
 					mysqli_close($conn);
 					return $result;
+					
+					return NULL;
 				}
 				else{
+					
 					echo " <script> \n";
 					foreach($this->$entryList as $entry) {
-						if($this->$entry->message != ""){
+						if($this->$entry->message !== ""){
 							echo " alert(" . $entry->message . ");\n";
 						}
 					}
 					echo " </script>\n";
+					
 					return NULL;
 				}
 			}
-
+			
+			
 			function generate() {
-				echo "<form method='post' id='" . $this->$formName . "'>\n";
+				echo "<form method='post' id='" . $this->formName . "'>\n";
 				echo "<fieldset>\n";
-				foreach($this->$entryList as $entry) {
+				foreach($this->entryList as $entry) {
 					$entry->generate($this);
 				}
 				echo "</fieldset>\n";
@@ -271,24 +306,25 @@
 				echo "</p>\n";
 				echo "</form>";
 			}
-
-            function __construct($fName,$fProc,$fEntryList,$fAuthorized) {
-				$this->$formName = $fName;
-				$this->$formProc = $fProc;
-				$this->$entryList = $fEntryList;
-				$this->$authorized = $fAuthorized;
-				$this->$error = false;
-            }
-
+			
+			function __construct($fName,$fProc,$fEntryList,$fAuthorized) {
+				$this->formName = $fName;
+				$this->formProc = $fProc;
+				$this->entryList = $fEntryList;
+				$this->authorized = $fAuthorized;
+				$this->error = false;
+			}
+			
 		}
-
+		
 		class AutoPage {
 
 			var $siteName;
 			var $formList;
+			var $navList;
 			var $hasTable;
-			var	$hasLog;
-
+			var $hasLog;
+			
 			function getText(){
 				$row = mysqli_fetch_row($result);
 				return $row["resultText"];
@@ -304,10 +340,10 @@
 				}
 			}
 
-
+			
 			function getActiveForm(){
-				var $result;
-				var $fName = $_POST['formName'];
+				$result;
+				$fName = $_POST['formName'];
 				foreach($this->$formList as $fItr){
 					if($fItr->formName == $fName){
 						$result = $fItr;
@@ -316,11 +352,12 @@
 				}
 				return $result;
 			}
-
+			
+			
 			function processForm($theForm){
-				var $result = NULL;
+				$result = NULL;
 				if($theForm != NULL){
-					var $reqType = $_SERVER["REQUEST_METHOD"];
+					$reqType = $_SERVER["REQUEST_METHOD"];
 					if(reqType == "POST"){
 						$theForm->loadValues();
 						$theForm->verify();
@@ -331,10 +368,10 @@
 				return $result;
 			}
 
-
+			
 			function generateHeader(){
 				echo 	"<header>\n" .
-						$siteName .
+						$this->siteName .
 						"";
 
 				if(isset($_SESSION["username"])){
@@ -344,17 +381,18 @@
 				}
 				echo	"</header>";
 			}
+			
 
 			function generateNavBar(){
 				echo "<nav> <ul> ";
-				foreach ($content as $page => $location){
+				foreach ($this->navList as $page => $location){
 					echo	"<li><a href='$location' ".
 							($page==$currentpage?" class='active'":"").
 							">".$page."</a></li>";
 				}
 				echo "</ul> </nav>";
 			}
-
+			
 			function generateTableHeader($theResult){
 				$fields_num = mysqli_num_fields($theResult);
 				echo "<tr>";
@@ -364,7 +402,7 @@
 				}
 				echo "</tr>\n";
 			}
-
+			
 			function generateTableContent($theResult){
 				while($row = mysqli_fetch_row($theResult)) {
 					echo "<tr>";
@@ -381,33 +419,33 @@
 				echo "<table id='t01' border='1'>";
 				$this->generateTableHeader($theResult);
 				$this->generateTableContent($theResult);
-				echo "<\table>";
+				echo "</table>";
 
 				mysqli_free_result($result);
 			}
-
+			
 			function generateContent(){
-				var $formResult = NULL;
+				$formResult = NULL;
 				if(reqType == "POST"){
-					var $theForm = $this->getActiveForm();
-					var $formResult = $this->processForm($theForm);
+					$theForm = $this->getActiveForm();
+					$formResult = $this->processForm($theForm);
 				}
 
-				if($this->$hasTable){
+				if($this->hasTable){
 					$this->generateTable($formResult);
 				}
 				else{
-					if($this->$hasLog){
+					if($this->hasLog){
 						echo "<div class='left'>";
 					}
 					else{
 						echo "<div class='middle'>";
 					}
-					foreach($this->$formList as $fItr){
+					foreach($this->formList as $fItr){
 						$fItr->generate();
 					}
-					echo "<\div>";
-					if($this->$hasLog){
+					echo "</div>";
+					if($this->hasLog){
 						$this->appendLog($formResult);
 						echo "<div class='right'>";
 						echo $_SESSION["log"];
@@ -415,12 +453,13 @@
 					}
 				}
 			}
+			
 
 			function generatePage(){
 				echo "<!DOCTYPE html>\n";
 				echo "<html>\n";
 				echo "<head>\n";
-				echo "<title>" . $siteName . "</title>";
+				echo "<title>" . $this->siteName . "</title>";
 				echo "<link rel='stylesheet' href='index.css'>";
 				echo "</head>\n";
 				echo "<body>\n";
@@ -431,15 +470,16 @@
 				echo "</html>\n";
 			}
 
-			function __construct($sName,$fList,$hTable,$hLog) {
-				$this->$siteName = $sName;
-				$this->$formList = $fList;
-				$this->$hasTable = $hTable;
-				$this->$hasLog = $hLog;
-            }
+			function __construct($sName,$fList,$nList,$hTable,$hLog) {
+				$this->siteName = $sName;
+				$this->formList = $fList;
+				$this->navList = $nList;
+				$this->hasTable = $hTable;
+				$this->hasLog = $hLog;
+            		}
+	
+	}
 
-		}
-
-
+	
 	?>
 
