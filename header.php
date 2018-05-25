@@ -7,6 +7,7 @@
 			var $entryValue;
 			var $required;
 			var $hidden;
+			var $auto;
 			var $error;
 			var $message;
 			
@@ -193,6 +194,9 @@
 					if( $this->entryType === "confirm" ){
 						$realType = "password";
 					}
+					else if($this->hidden){
+						$realType = "hidden";
+					}
 					else{
 						$realType = $this->entryType;
 					}
@@ -305,7 +309,6 @@
 					mysqli_close($conn);
 					return $result;
 					
-					return NULL;
 				}
 				else{
 					$_SESSION["check"] = "nope";
@@ -365,12 +368,12 @@
 
 			function appendLog($aText){
 
-				if(isset($_SESSION[$this->pageName . "log"]) && 
-						$_SESSION[$this->pageName . "log"] !== NULL){
-					$_SESSION[$this->pageName . "log"] .= aText;
+				if(!!!!!!!!!!!isset($_SESSION[$this->pageName . "log"]) && 
+					$_SESSION[$this->pageName . "log"] !== NULL){
+					$_SESSION[$this->pageName . "log"] .= $aText;
 				}
 				else{
-					$_SESSION[$this->pageName . "log"] = aText;
+					$_SESSION[$this->pageName . "log"] = $aText;
 				}
 			}
 
@@ -505,9 +508,6 @@
 				if($this->hasTable){
 					$resultTable = $_SESSION[$this->pageName . "table"];
 					$this->generateTable($resultTable);
-					if(!$resultTable){
-						echo "OH NO";
-					}
 				}
 			}
 			
@@ -519,7 +519,8 @@
 					$formResult = $this->processForm($theForm);
 					if($formResult !== NULL){
 						if($this->hasLog){
-							$logText = mysqli_fetch_row($formResult)["logText"];
+							$logText = mysqli_fetch_row($formResult);
+							$logText = $logText[1];
 							$_SESSION[$this->pageName . "log"] = $logText;
 						}
 						else if($this->hasTable){

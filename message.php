@@ -40,8 +40,5 @@
 	$page = new AutoPage("Quest Database","message",$forms,$content,$hasTable,$hasLog);
 	
 	$page->generatePage();
-	//echo "<html><body>";
-	
-	//echo "</body></html>";
-	//ob_end_flush();
+
 ?>
