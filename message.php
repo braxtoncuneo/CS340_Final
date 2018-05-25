@@ -1,9 +1,11 @@
 <?php
+	
 	error_reporting(E_ALL);
 	//ob_start();
 	session_start();
 
 	//header_remove();
+	
 	include "pages.php";
 	include "connectvars.php";
 	include "header.php";
@@ -30,8 +32,11 @@
 	$forms = array(
 		new AutoForm("MakeMessage","makeMessage",$entries,false)
 	);
-	$hasTable = false;
+	$hasTable = true;
 	$hasLog = false;
+	
+
+
 	$page = new AutoPage("Quest Database","message",$forms,$content,$hasTable,$hasLog);
 	
 	$page->generatePage();
