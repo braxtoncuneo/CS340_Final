@@ -368,7 +368,7 @@
 
 			function appendLog($aText){
 
-				if(!!!!!!!!!!!isset($_SESSION[$this->pageName . "log"]) && 
+				if(!isset($_SESSION[$this->pageName . "log"]) && 
 					$_SESSION[$this->pageName . "log"] !== NULL){
 					$_SESSION[$this->pageName . "log"] .= $aText;
 				}
