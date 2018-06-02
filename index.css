@@ -8,11 +8,6 @@
 header {
 
 	height: 20px;
-	background-color: black;
-	color: lime;
-	border: 2px solid lime;
-	margin-top: 0px;
-	margin-right: 0px;
 	margin-bottom: 4px;
 	padding: 20px 20px 20px 20px;
 	font-size: 1.5em;
@@ -20,8 +15,6 @@ header {
 
 }
 header > h1 {
-	color: lime;
-	background-color: black;
 	font-size : 3em;
 	font-style: italic;
 	text-align: right;
@@ -38,22 +31,33 @@ header em {
 
 html {
 	background-color: black;
-	color: lime;
+	color: #44FF44;
 	font-family: 'VT323';
-	font-size: 18px;
+	font-size: 32px;
+	border: solid 2px lime;
+	text-shadow: 0 0 8px #88FF88;
+	box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
+	//filter: blur(0.20px);
 }
+
+a{
+    color: lime;
+}
+
 nav ul {
     list-style-type: none;
     padding: 0;
     overflow: hidden;
     background-color: black;
-	margin: 0 0 0 0;
+    margin: 0 0 0 0;
 }
 
 nav li {
     float: left;
     border:2px solid lime;
-}
+    text-shadow: 0 0 8px #88FF88;
+    box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
+}	
 
 nav li:nth-last-child(-n+4){
     float: right;
@@ -62,7 +66,6 @@ nav li:nth-last-child(-n+4){
 
 nav li a {
     display: block;
-    color: lime;
     text-align: center;
     padding: 10px 16px;
     text-decoration: none;
@@ -78,9 +81,6 @@ main {
 	overflow:auto;
 	margin: auto;
 	margin: 10px 10px 10px 10px;
-	background-color: black;
-	border: solid lime 2px;
-	border-radius: 8px;
 	padding: 10px 10px 10px 10px;
 }
 #betSpan {
@@ -140,8 +140,6 @@ main {
 	width: 400px;
 	margin-left: 20px;
 	font-size: 12px;
-	background-color: black;
-	border: solid lime 2px;
 	border-radius: 8px;
 	padding: 0px 5px 15px 15px;
 }
@@ -174,12 +172,9 @@ em {
 	font-family: "Times New Roman", Georgia, Serif;
 }
 footer {
-	background-color: black;
 	height: 20px;
 	padding: 10px;
 	padding-right: 10px;
-	color: lime;
-	border: solid lime;
 	margin-top: 0px;
 	margin-right: 0px;
 	margin-bottom: 0px;
@@ -197,52 +192,66 @@ footer {
 }
 legend {
     padding: 1px 8px;
-    border: 2px solid lime;
     border-radius: 6px / 12px;
     box-shadow: none;
-    background: black;
     font-size: 14px;
     color: lime;
 }
+
 form {
     display: block;
     margin-top: 0em;
 }
+
 fieldset label {
     float: left;
     clear: left;
     padding-top: 2px;
-    width: 120px;
+    width: 256px;
     text-align: right;
     font-size: 90%;
     color: lime;
 }
+
+fieldset{
+    border: solid lime 2px;
+    box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
+}
+
 fieldset input, fieldset textarea, fieldset select {
     padding: 2px 4px;
-    border: 1px solid lime;
     border-radius: 2px;
-    background: black;
     line-height: 1.1;
     font-family: inherit;
     font-size: 1.1em;
     color: lime;
+    text-shadow: 0 0 8px #88FF88;
+    background: black;
+    border: solid lime 2px;
+    box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
 }
 fieldset span {
     display: block;
     margin: 0 0 0 120px;
     padding: 0 0 4px 4px;
+    border: solid lime 2px;
 }
-fieldset input[type="submit"], fieldset input[type="reset"], fieldset input[type="button"] {
+input[type="submit"], input[type="reset"], input[type="button"] {
+    font-family: 'VT323', monospace;
+    font-size: 32px;
     padding: 2px 6px;
-    border: 1px solid lime;
-    background: black;
-    background-image: -webkit-linear-gradient(top,#fff,#dae6f1);
-    background-image: -moz-linear-gradient(top,#fff,#dae6f1);
-    background-image: -ms-linear-gradient(top,#fff,#dae6f1);
-    background-image: linear-gradient(to bottom,#fff,#dae6f1);
-    font-size: 100%;
+    //background-image: -webkit-linear-gradient(top,#fff,#dae6f1);
+    //background-image: -moz-linear-gradient(top,#fff,#dae6f1);
+    //background-image: -ms-linear-gradient(top,#fff,#dae6f1);
+    //background-image: linear-gradient(to bottom,#fff,#dae6f1);
+    //font-size: 100%;
     color: lime;
+    background: black;
+    text-shadow: 0 0 8px #88FF88;
+    box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
+    border: solid lime 2px;
 }
+
 #passformat {
 	float: right;
 	width: 50%;
@@ -252,7 +261,6 @@ fieldset input[type="submit"], fieldset input[type="reset"], fieldset input[type
 table,
 th,
 td {
-  border: 2px solid black;
   border-collapse: collapse;
 }
 
@@ -268,8 +276,8 @@ table {
 table,
 th,
 td {
-  border: 2px solid lime;
   border-collapse: collapse;
+  border: 2px lime;
 }
 
 th,
@@ -279,22 +287,20 @@ td {
 }
 table#t01 {
 	width:400px;
-	border: lime;
+}
+
+table#t01 td {
+	border: solid lime 2px;
+	box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
 }
 
 table#t01 tr:nth-child(even) {
-  background-color: black;
-  color: lime;
 }
 
 table#t01 tr:nth-child(odd) {
-  background-color: black;
-  color: lime;
 }
 
 table#t01 th {
-  background-color: black;
-  color: lime;
 }
 
 #t01  tr:hover {
@@ -311,9 +317,9 @@ caption {
   -moz-border-radius: 2;
   border-radius: 2px;
   font-family: Arial;
-  color: #ffffff;
+  color: lime;
   font-size: 12px;
-  background: green;
+  background: black;
   padding: 8px 8px 8px 8px;
   text-decoration: none;
 }
@@ -328,11 +334,38 @@ caption {
   color: black;
 }
 label{
-  background: black;
-  color: lime;
+  //background: black;
+  //color: lime;
+}
+
+.container{
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    flex-direction: row;
 }
 
 .middle{
   border: lime;
+}
+
+.left{
+    flex: 0 0 50%;
+    width: 50%;
+    color: lime;
+    background: black;
+    text-shadow: 0 0 8px #88FF88;
+    box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
+    border: solid lime 2px;
+}
+
+.right{
+    flex: 1;
+    width: 50%;
+    color: lime;
+    background: black;
+    text-shadow: 0 0 8px #88FF88;
+    box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
+    border: solid lime 2px;
 }
 

@@ -1,0 +1,202 @@
+				if(gettype($this->entryValue) === "string"){
+					if($this->entryValue === "" && $this->required){
+						$this->requiredMessage();
+						$this->error = true;
+						$this->clearMessage();
+						$this->error = false;
+					$this->typeErrorMessage();
+				return $this->error;
+				if($this->entryValue === ""){
+					$this->requiredMessage();
+					$this->error = true;
+				else if(strLen($this->entryValue) < 8) {
+					$this->message = "Password must be at least 8 characters";
+					$this->error = true;
+					$this->clearMessage();
+					$this->error = false;
+				return $this->error;
+				if(gettype($this->entryValue) === "string"){
+					foreach($hostForm->entryList as $eItr){
+						if($eItr->entryType === "password"){
+							if($this->entryValue === $eItr->entryValue){
+								$this->clearMessage();
+								$this->error = false;
+								return $this->error;
+								$this->message = 	"Password confirmation '" .
+													$this->entryValue .
+													$eItr->entryValue . "'";
+								$this->error = true;
+								return $this->error;
+					$this->typeErrorMessage();
+				return $this->error;
+				$this->error = true;
+				if(gettype($this->entryValue) === "string"){
+					if($this->entryValue == $this->entryName) {
+						$this->entryValue = true;
+						$this->clearMessage();
+						$this->entryValue = false;
+					$this->error = false;
+					$this->typeErrorMessage();
+				return $this->error;
+				$this->error = true;
+				if(gettype($this->entryValue) === "string"){
+					if($this->entryValue === "" && $this->required){
+						$this->requiredMessage();
+					else if(is_numeric($this->entryValue)) {
+						$this->error = false;
+						$this->entryValue = (int) $this->entryValue;
+						$this->valueErrorMessage();
+					$this->typeErrorMessage();
+				return $this->error;
+				$this->message = "";
+				$this->message = "Value error: no value for required entry '" .
+								  $this->entryName . "'";
+				$this->message =	"Value error: bad value '" .
+									$this->entryValue .
+									"' used for " . $this->entryType .
+									" entry " . $this->entryName;
+				$this->message =	"Type error: bad type '" .
+									gettype($this->entryValue) .
+									"' used for " . $this->entryType .
+									" entry " . $this->entryName;
+				if($this->autoGet){
+					$this->entryValue = $_SESSION[$this->entryName];
+					$this->entryValue = trim($_POST[$this->entryName]);
+				if($this->autoSet){
+					$_SESSION[$this->entryName] = $this->entryValue;
+				if($this->entryType === "text" || $this->entryType === "textarea"){
+					return $this->verifyText();
+				else if($this->entryType === "password"){
+					return $this->verifyPassword();
+				else if($this->entryType === "confirm"){
+					return $this->verifyPassword($this);
+				else if($this->entryType === "checkbox"){
+					return $this->verifyCheckbox();
+				else if($this->entryType === "number"){
+					return $this->verifyNumber();
+				if( $this->entryType === "confirm" ){
+				else if($this->autoGet || $this->hidden){
+					$res = $this->entryType;
+				if($this->entryType === "textarea"){
+					$res .= "<label for='" . $this->entryName . "'>\n" .
+							$this->entryName . ":</label>";
+							" name='" . $this->entryName . "'" .
+							" form='" . $hostForm->formName . "'";
+					$ErrMap = $_SESSION[$hostForm->formName];
+					if($ErrMap[$this->entryName]){
+					$res .= $ErrMap[$this->entryName];
+					$realType = $this->htmlEntryType($this->entryType);
+					$res .= "<label for='" . $this->entryName . "'>\n" .
+							$this->entryName . ":</label>";
+									" name='" . $this->entryName . "'" .
+									" id='" . $this->entryName . "'" .
+									" title='" . $this->entryName . "'";
+					$ErrMap = $_SESSION[$hostForm->formName];
+					if($ErrMap[$this->entryName]){
+					$res .= $ErrMap[$this->entryName];
+				$this->entryName = $eName;
+				$this->entryType = $eType;
+				$this->entryValue = $eValue;
+				$this->required = $eRequired;
+				$this->hidden = $eHidden;
+				$this->autoGet = $aGet;
+				$this->autoSet = $aSet;
+				$this->error = false;
+				$this->message = "";
+					if($entry->htmlEntryType($entry->entryType) !== "hidden"){
+				$this->echoText .= $eText;
+				$this->error = false;
+				foreach($this->entryList as $entry){
+					$this->error = $this->error || $entry->load();
+				$this->error = false;
+				foreach($this->entryList as $entry) {
+					$locErr = $entry->verify();
+					$ErrMap[$entry->entryName] = $locErr;
+					$this->error = $this->error || $locErr;
+				$_SESSION[$this->formName] = $ErrMap;
+				foreach($this->entryList as $entry) {
+					$entry->autoSetIfNeeded();
+				if( ($this->error == false ) || ($this->formProc === NULL) ) {
+					$call = "CALL " . $this->formProc . " ( ";
+					foreach($this->entryList as $entry){
+						$val = $entry->entryValue;
+						if($entry->entryType === "checkbox" ||
+							$entry->entryType === "number"){
+					foreach($this->entryList as $entry) {
+						if($entry->message !== ""){
+							$_SESSION[$aKey] .= " alert(\"" . $entry->message . "\");\n";
+				$res .= "<form method='post' id='" . $this->formName . "'>\n";
+				foreach($this->entryList as $entry) {
+					$res .= $entry->generate($this);
+					" value='" . $this->formName . "'> </input>";
+				$this->formName = $fName;
+				$this->formProc = $fProc;
+				$this->entryList = $fEntryList;
+				$this->authorized = $fAuthorized;
+				$this->error = false;
+				$this->echoText = "";
+					if(!  $form->isPassive()){
+				$this->echoText .= $eText;
+				if(!isset($_SESSION[$this->pageName . "log"]) && 
+					$_SESSION[$this->pageName . "log"] !== NULL){
+					$_SESSION[$this->pageName . "log"] .= $aText;
+					$_SESSION[$this->pageName . "log"] = $aText;
+				foreach($this->formList as $fItr){
+					if($fItr->formName === $fName){
+						$theForm->loadValues();
+						$theForm->verify();
+						$result = $theForm->process();
+						$this->siteName .
+					$res .= " - <em> Welcome <span id='username'>" .
+				foreach ($this->navList as $page => $location){
+					$res .= "<td><b>$field->name</b></td>";
+						$table .= $this->generateTableHeader($theResult);
+						$table .= $this->generateTableContent($theResult);
+					$_SESSION[$this->pageName . "table"] = $table;
+					$table = $_SESSION[$this->pageName . "table"];
+					$res .= $this->pageName . $table;
+				if($this->hasLog){
+				foreach($this->formList as $fItr){
+					$res .= $fItr->generate();
+					if($this->hasLog){
+						$this->appendLog($logText);
+						$res .= $_SESSION[$this->pageName . "log"];
+					if($this->hasTable){
+						$res .= $this->generateTable($formResult);
+				if($this->hasLog){
+					$agErr = $this->checkAutoGets(); 
+					$this->etch("<!DOCTYPE html>\n");
+					$this->etch("<html>\n");
+					$this->etch("<head>\n");
+					$this->etch("<title>" . $this->siteName . "</title>");
+					$this->etch("<link rel='stylesheet' href='index.css'>");
+					$this->etch("</head>\n");
+					$this->etch("<body>\n");
+					$this->etch("--> " . $theForm->formName . " <--");
+					$this->etch($this->generateHeader());
+					$this->etch($this->generateNavBar());
+						if($this->isPassive()){
+							$this->etch($this->generateContent($formResult));
+						$this->etch($agErr);
+					$this->etch($_SESSION["alert"]);
+					$this->etch($_SESSION["check"]);
+					$this->etch("</body>\n");
+					$this->etch("</html>\n");
+					$theForm = $this->getActiveForm();
+					$_SESSION["formName"] = $theForm->formName;
+					$formResult = $this->processForm($theForm);
+						$theForm->doAutoSets();
+					$this->generateHTML($formResult);
+					$_SESSION["content"] = $this->echoText;
+						$this->etch($_SESSION["content"]);
+						//echo $this->echoText;
+						$this->generateHTML(NULL);
+					echo $this->echoText;
+				$this->siteName = $sName;
+				$this->pageName = $pName;
+				$this->formList = $fList;
+				$this->navList = $nList;
+				$this->autoGetList = $agList;
+				$this->hasTable = $hTable;
+				$this->hasLog = $hLog;
+				$this->echoText = "";
