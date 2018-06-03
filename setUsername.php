@@ -9,7 +9,7 @@
 	include "header.php";
 
 	$entries = array(
-		new AutoEntry("username","text","",true,false,false,true)
+		new AutoEntry("username","text","autoset","",true)
 	);
 	$forms = array(
 		new AutoForm("worlds",NULL,$entries,false)
@@ -20,7 +20,7 @@
 	
 
 
-	$page = new AutoPage("Quest Database","userWorlds",$forms,$content,$autoGets,$hasTable,$hasLog);
+	$page = new AutoPage("Quest Database","",$forms,$content,$autoGets,$hasTable,$hasLog);
 	
 	$page->generatePage();
 ?>

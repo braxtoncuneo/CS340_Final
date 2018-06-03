@@ -71,11 +71,13 @@ nav li a {
     text-decoration: none;
 }
 nav li a:hover:not(.active) {
-    background-color: red;
+    background-color: lime;
+    color: black;
 }
 
 nav .active {
-    background-color: red;
+    background-color: lime;
+    color: black;
 }
 main {
 	overflow:auto;

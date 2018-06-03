@@ -331,7 +331,7 @@
 			function process() {
 
 				$aKey = "alert";
-				if( ($this->error == false ) || ($this->formProc === NULL) ) {
+				if( ($this->error == false ) && ($this->formProc !== NULL) ) {
 					//$_SESSION["check"] = "woah";
 					
 					$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
@@ -370,6 +370,10 @@
 					mysqli_close($conn);
 					return $result;
 					
+				}
+				else if($this->isPassive()){
+					$this->doAutoSets();
+					return NULL;
 				}
 				else{
 					$_SESSION["check"] = "nope";
@@ -491,7 +495,7 @@
 			
 			function checkAutoGets(){
 				$res = "";
-				foreach($autoGetList as $aGet){
+				foreach($this->autoGetList as $aGet){
 					$gName = $aGet[0];
 					$gFail = $aGet[1];
 					if(!isset($_SESSION[$gName])){
@@ -510,9 +514,7 @@
 						"";
 
 				if(isset($_SESSION["username"])){
-					$res .= " - <em> Welcome <span id='username'>" .
-							$_SESSION["username"] .
-							"</span>!</em>";
+					$res .= " - Welcome " . $_SESSION["username"];
 				}
 				$res .= "</header>";
 				return $res;
@@ -562,7 +564,7 @@
 			function generateTable($theResult) {
 				
 				$res = "";
-				if($_POST){
+				if($_POST || $this->isPassive()){
 					$table = "";
 					if($theResult){
 						$table .= "<table id='t01' border='1'>";
@@ -578,7 +580,7 @@
 					$_SESSION[$this->pageName . "table"] = $table;
 					$res .= $table;
 				}
-				else{
+				else {
 					$table = $_SESSION[$this->pageName . "table"];
 					$res .= $this->pageName . $table;
 				}
@@ -640,6 +642,7 @@
 						if($this->isPassive()){
 							$theForm = $this->formList[0];
 							$formResult = $this->processForm($theForm);
+							$theForm->doAutoSets();
 							$this->etch($this->generateTable($formResult));
 						}
 						else{
