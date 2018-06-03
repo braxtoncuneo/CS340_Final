@@ -4,14 +4,29 @@
 
 			var $entryName;
 			var $entryType;
+			var $useType;
 			var $entryValue;
 			var $required;
-			var $autoget;
-			var $autoset;
 			var $error;
 			var $message;
 			
 			
+			function isHidden(){
+				return ($this->useType === "hidden");
+			}
+
+			function isAutoGet(){
+				return ($this->useType === "autoget");
+			}
+
+			function isAutoSet(){
+				return ($this->useType === "autoset");
+			}
+
+			function isRegular(){
+				return ($this->useType === "regular");
+			} 
+
 			function verifyText () {
 				if(gettype($this->entryValue) === "string"){
 					if($this->entryValue === "" && $this->required){
@@ -144,9 +159,20 @@
 			}
 
 			function load() {
-				$this->entryValue = trim($_POST[$this->entryName]);
+				if($this->isAutoGet()){
+					$this->entryValue = $_SESSION[$this->entryName];
+				}
+				else{
+					$this->entryValue = trim($_POST[$this->entryName]);
+				}
 				return false;
 			}
+
+			function autoSetIfNeeded(){
+				if($this->isAutoSet()){
+					$_SESSION[$this->entryName] = $this->entryValue;
+				}
+			}		
 			
 
 			function verify() {
@@ -169,66 +195,74 @@
 				return true;
 			}
 
+			function htmlEntryType($stdEntryType){
+				$res = "";
+				if( $this->entryType === "confirm" ){
+					$res = "password";
+				}
+				else if($this->isAutoGet() || $this->isHidden()){
+					$res = "hidden";
+				}
+				else{
+					$res = $this->entryType;
+				}
+				return $res;
+			}
+
 
 			function generate($hostForm) {
+				$res = "";
 				if($this->entryType === "textarea"){
 					
-					echo "<p>\n";
-					echo "<label for='" . $this->entryName . "'>\n" .
+					$res .= "<p>\n";
+					$res .= "<label for='" . $this->entryName . "'>\n" .
 							$this->entryName . ":</label>";
-					echo "<textarea  rows='4' cols='50' " .
+					$res .= "<textarea  rows='8' cols='32' " .
 							" name='" . $this->entryName . "'" .
 							" form='" . $hostForm->formName . "'";
 					$ErrMap = $_SESSION[$hostForm->formName];
 					if($ErrMap[$this->entryName]){
-						echo " class='bad' ";
+						$res .= " class='bad' ";
 					}
-					echo ">\n";
-					echo $ErrMap[$this->entryName];
-					echo "</textarea>\n";
-					echo "</p>\n";
+					$res .= ">\n";
+					$res .= $ErrMap[$this->entryName];
+					$res .= "</textarea>\n";
+					$res .= "</p>\n";
 					
 				}
 				else{
 					
-					$realType;
-					if( $this->entryType === "confirm" ){
-						$realType = "password";
-					}
-					else if($this->hidden){
-						$realType = "hidden";
-					}
-					else{
-						$realType = $this->entryType;
-					}
+					$realType = $this->htmlEntryType($this->entryType);
+				
 					
-					echo "<p>\n";
-					echo "<label for='" . $this->entryName . "'>\n" .
+					$res .= "<p>\n";
+					$res .= "<label for='" . $this->entryName . "'>\n" .
 							$this->entryName . ":</label>";
-					echo "<input" . " type='" . $realType . "'" .
+					$res .= "<input" . " type='" . $realType . "'" .
 									" name='" . $this->entryName . "'" .
 									" id='" . $this->entryName . "'" .
 									" title='" . $this->entryName . "'";
 					$ErrMap = $_SESSION[$hostForm->formName];
 					if($ErrMap[$this->entryName]){
-						echo " class='bad' ";
+						$res .= " class='bad' ";
 					}
-					echo ">\n";
-					echo $ErrMap[$this->entryName];
-					echo "\n</input>\n";
-					echo "</p>\n";
+					$res .= ">\n";
+					$res .= $ErrMap[$this->entryName];
+					$res .= "\n</input>\n";
+					$res .= "</p>\n";
 					
 						
 				}
+				return $res;
 			}
 			
 
-			function __construct($eName,$eType,$eValue,$eRequired,$eHidden) {
+			function __construct($eName,$eType,$eUse,$eValue,$eRequired) {
 				$this->entryName = $eName;
 				$this->entryType = $eType;
 				$this->entryValue = $eValue;
+				$this->useType = $eUse;
 				$this->required = $eRequired;
-				$this->hidden = $eHidden;
 				$this->error = false;
 				$this->message = "";
 			}
@@ -246,6 +280,24 @@
 			var $entryList;
 			var $authorized;
 			var $error;
+			var $echoText;
+
+
+			function isPassive(){
+				$res = true;
+				foreach($this->entryList as $entry){
+					$_SESSION["check"]= "lowPass";
+					if($entry->isHidden() || $entry->isAutoGet()){
+						$res = false;
+					}
+				}
+				return $res;
+			}
+
+
+			function etch($eText){
+				$this->echoText .= $eText;
+			}
 			
 			
 			function loadValues() {
@@ -267,12 +319,20 @@
 				}
 				$_SESSION[$this->formName] = $ErrMap;
 			}
+
+
+			function doAutoSets(){
+				foreach($this->entryList as $entry) {
+					$entry->autoSetIfNeeded();
+				}
+			}
 			
+
 			function process() {
 
 				$aKey = "alert";
-				if($this->error == false) {
-					$_SESSION["check"] = "woah";
+				if( ($this->error == false ) && ($this->formProc !== NULL) ) {
+					//$_SESSION["check"] = "woah";
 					
 					$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 					
@@ -311,6 +371,10 @@
 					return $result;
 					
 				}
+				else if($this->isPassive()){
+					$this->doAutoSets();
+					return NULL;
+				}
 				else{
 					$_SESSION["check"] = "nope";
 					$_SESSION[$aKey] = "";	
@@ -328,19 +392,21 @@
 			
 			
 			function generate() {
-				echo "<form method='post' id='" . $this->formName . "'>\n";
-				echo "<fieldset>\n";
+				$res = "";
+				$res .= "<form method='post' id='" . $this->formName . "'>\n";
+				$res .= "<fieldset>\n";
 				foreach($this->entryList as $entry) {
-					$entry->generate($this);
+					$res .= $entry->generate($this);
 				}
-				echo "<input hidden type='hidden' name='formName' " . 
+				$res .= "<input hidden type='hidden' name='formName' " . 
 					" value='" . $this->formName . "'> </input>";
-				echo "</fieldset>\n";
-				echo "<p>\n";
-				echo "<input type = 'submit'  value = 'submit' />";
-				echo "<input type = 'reset'  value = 'reset' />";
-				echo "</p>\n";
-				echo "</form>";
+				$res .= "</fieldset>\n";
+				$res .= "<p>\n";
+				$res .= "<input type = 'submit'  value = 'submit' />";
+				$res .= "<input type = 'reset'  value = 'reset' />";
+				$res .= "</p>\n";
+				$res .= "</form>";
+				return $res;
 			}
 			
 			function __construct($fName,$fProc,$fEntryList,$fAuthorized) {
@@ -349,6 +415,7 @@
 				$this->entryList = $fEntryList;
 				$this->authorized = $fAuthorized;
 				$this->error = false;
+				$this->echoText = "";
 			}
 			
 		}
@@ -359,8 +426,28 @@
 			var $pageName;
 			var $formList;
 			var $navList;
+			var $autoGetList;
 			var $hasTable;
 			var $hasLog;
+			var $echoText;
+
+
+			function isPassive(){
+				$result = true;
+				$_SESSION["check"] = "nopass ";
+				foreach($this->formList as $form){
+					$_SESSION["check"] = "onepass";
+					if( $form->isPassive()){
+						$result = false;
+					}
+				}
+				return $result;
+			}
+
+
+			function etch($eText){
+				$this->echoText .= $eText;
+			}
 			
 			function getText(){
 				$row = mysqli_fetch_row($result);
@@ -395,8 +482,8 @@
 			function processForm($theForm){
 				$result = NULL;
 				if($theForm !== NULL){
-					if($_POST){
-						$_SESSION["check"]="start";
+					if($_POST || $this->isPassive()){
+						//$_SESSION["check"]="start";
 						$theForm->loadValues();
 						$theForm->verify();
 						$result = $theForm->process();
@@ -406,28 +493,44 @@
 			}
 
 			
+			function checkAutoGets(){
+				$res = "";
+				foreach($this->autoGetList as $aGet){
+					$gName = $aGet[0];
+					$gFail = $aGet[1];
+					if(!isset($_SESSION[$gName])){
+						$res .= "<br>".$gFail."<br>";
+					}
+				}
+				return $res;
+			}
+
+			
+					
 			function generateHeader(){
-				echo 	"<header>\n" .
+				$res = "";
+				$res .= "<header>\n" .
 						$this->siteName .
 						"";
 
 				if(isset($_SESSION["username"])){
-					echo	" - <em> Welcome <span id='username'>" .
-							$_SESSION["username"] .
-							"</span>!</em>";
+					$res .= " - Welcome " . $_SESSION["username"];
 				}
-				echo	"</header>";
+				$res .= "</header>";
+				return $res;
 			}
 			
 
 			function generateNavBar(){
-				echo "<nav> <ul> ";
+				$res = "";
+				$res .= "<nav> <ul> ";
 				foreach ($this->navList as $page => $location){
-					echo	"<li><a href='$location' ".
+					$res .= "<li><a href='$location' ".
 							($page==$currentpage?" class='active'":"").
 							">".$page."</a></li>";
 				}
-				echo "</ul> </nav>";
+				$res .= "</ul> </nav>";
+				return $res ;
 			}
 			
 			function generateTableHeader($theResult){
@@ -460,7 +563,8 @@
 
 			function generateTable($theResult) {
 				
-				if($_POST){
+				$res = "";
+				if($_POST || $this->isPassive()){
 					$table = "";
 					if($theResult){
 						$table .= "<table id='t01' border='1'>";
@@ -472,44 +576,86 @@
 					else{
 						$table = "NO RESULT";
 					}
+					
 					$_SESSION[$this->pageName . "table"] = $table;
+					$res .= $table;
 				}
-				else{
+				else {
 					$table = $_SESSION[$this->pageName . "table"];
-					echo $this->pageName . $table;
+					$res .= $this->pageName . $table;
 				}
-				
+				return $res;	
 
-				//mysqli_free_result($result);
 			}
 			
-			function generateContent(){
+			function generateContent($formResult){
 				
+				$res = "";
 				$reqType = $_SERVER["REQUEST_METHOD"];
-				echo $reqType;
+				$res .= $reqType;
 
 				
 				if($this->hasLog){
-					echo "<div class='left'>";
+					$res .= "<div class='container'>";
+					$res .= "<div class='left'>";
 				}
 				else{
-					echo "<div class='middle'>";
+					$res .= "<div class='middle'>";
 				}
 				foreach($this->formList as $fItr){
-					$fItr->generate();
+					$res .= $fItr->generate();
 				}
-				echo "</div>";
+				$res .= "</div>";
+				
+				if($formResult !== NULL){
+					if($this->hasLog){
+						$logRow = mysqli_fetch_row($formResult);
+						$logText = $logRow[1];
+						$this->appendLog($logText);
+						$res .= "<div class='right'>";
+						$res .= $_SESSION[$this->pageName . "log"];
+						$res .= "</div>";
+					}
+					if($this->hasTable){
+						$res .= $this->generateTable($formResult);
+					}
+				}
 				if($this->hasLog){
-					$resultLog = $_SESSION[$this->pageName . "log"];
-					$this->appendLog($resultLog);
-					echo "<div class='right'>";
-					echo $_SESSION[$this->pageName . "log"];
-					echo "</div>";
+					$res .= "</div>";
 				}
-				if($this->hasTable){
-					$resultTable = $_SESSION[$this->pageName . "table"];
-					$this->generateTable($resultTable);
-				}
+				return $res;
+			}
+
+			function generateHTML($formResult){
+					$agErr = $this->checkAutoGets(); 
+					$this->etch("<!DOCTYPE html>\n");
+					$this->etch("<html>\n");
+					$this->etch("<head>\n");
+					$this->etch("<title>" . $this->siteName . "</title>");
+					$this->etch("<link rel='stylesheet' href='index.css'>");
+					$this->etch("</head>\n");
+					$this->etch("<body>\n");
+					$this->etch("--> " . $theForm->formName . " <--");
+					$this->etch($this->generateHeader());
+					$this->etch($this->generateNavBar());
+					if($agErr === ""){
+						if($this->isPassive()){
+							$theForm = $this->formList[0];
+							$formResult = $this->processForm($theForm);
+							$theForm->doAutoSets();
+							$this->etch($this->generateTable($formResult));
+						}
+						else{
+							$this->etch($this->generateContent($formResult));
+						}
+					}
+					else{
+						$this->etch($agErr);
+					}
+					$this->etch($_SESSION["alert"]);
+					$this->etch($_SESSION["check"]);
+					$this->etch("</body>\n");
+					$this->etch("</html>\n");
 			}
 			
 
@@ -519,44 +665,39 @@
 					$_SESSION["formName"] = $theForm->formName;
 					$formResult = $this->processForm($theForm);
 					if($formResult !== NULL){
-						if($this->hasLog){
-							$logText = mysqli_fetch_row($formResult);
-							$logText = $logText[1];
-							$_SESSION[$this->pageName . "log"] = $logText;
-						}
-						else if($this->hasTable){
-							$this->generateTable($formResult);
-						}
+						$theForm->doAutoSets();
 					}
+					$this->generateHTML($formResult);
+					$_SESSION["content"] = $this->echoText;
 					header("Location: " . $_SERVER["REQUEST_URI"],true,301);
 					exit();
 				}
 				else{
-					echo "<!DOCTYPE html>\n";
-					echo "<html>\n";
-					echo "<head>\n";
-					echo "<title>" . $this->siteName . "</title>";
-					echo "<link rel='stylesheet' href='index.css'>";
-					echo "</head>\n";
-					echo "<body>\n";
-					echo "--> " . $_SESSION["formName"] . "<--";
-					$this->generateHeader();
-					$this->generateNavBar();
-					$this->generateContent();
-					echo $_SESSION["alert"];
-					echo $_SESSION["check"];
-					echo "</body>\n";
-					echo "</html>\n";
+					if(isset($_SESSION["content"])){
+						$this->etch($_SESSION["content"]);
+						//echo $this->echoText;
+						echo isset($_SESSION["content"]);
+						unset($_SESSION["content"]);
+					}
+					else{
+						$this->generateHTML(NULL);
+					}// */
+					echo $this->echoText;
+					$form0 = $this->formList[0];
+					echo "<br>" . $form0->isPassive();
+					//echo "HAHA";
 				}
 			}
 
-			function __construct($sName,$pName,$fList,$nList,$hTable,$hLog) {
+			function __construct($sName,$pName,$fList,$nList,$agList,$hTable,$hLog) {
 				$this->siteName = $sName;
 				$this->pageName = $pName;
 				$this->formList = $fList;
 				$this->navList = $nList;
+				$this->autoGetList = $agList;
 				$this->hasTable = $hTable;
 				$this->hasLog = $hLog;
+				$this->echoText = "";
             		}
 	
 	}

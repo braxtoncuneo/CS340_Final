@@ -4,10 +4,9 @@
 	session_start();
 
 	
-	include "autoTestPages.php";
+	include "release_pages.php";
 	include "connectvars.php";
 	include "header.php";
-
 
 	$entries = array(
 		new AutoEntry("username","text","autoget","",true)
@@ -21,7 +20,7 @@
 	
 
 
-	$page = new AutoPage("Quest Database","userWorlds",$forms,$content,$autoGets,$hasTable,$hasLog);
+	$page = new AutoPage("Quest Database","View Worlds",$forms,$content,$autoGets,$hasTable,$hasLog);
 	
 	$page->generatePage();
 ?>

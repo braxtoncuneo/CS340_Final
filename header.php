@@ -43,8 +43,73 @@
 				}
 				return $this->error;
 			}
+
 			
-			function verifyPassword () {
+			function getEntryByName($hostForm, $name){
+				foreach($hostForm->entryList as $entry){
+					if($entry->entryName === $name){
+						return $entry;
+					} 
+				}
+				return NULL;
+			}
+
+
+			function getEntryByType($hostForm, $type){
+				foreach($hostForm->entryList as $entry){
+					if($entry->entryType === $type){
+						return $entry;
+					} 
+				}
+				return NULL;
+			}
+			
+
+			function getUserSalt($username){
+				$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+				
+				$call = "SELECT salt FROM player WHERE username = '" . 
+					mysqli_real_escape_string($conn,$username) . "'";
+					
+				$table = mysqli_query($conn, $call);
+				
+				$res = NULL;
+				if($table){
+					$row = mysqli_fetch_row($table);
+					//$_SESSION["check"] = $row[0] . "---";
+					if($row){
+						$res = $row[0] ;
+					}
+				}
+				mysqli_close($conn);
+				return $res;
+				
+			}
+
+
+			function makeSalt($hostForm){
+				$salt = base64_encode(mcrypt_create_iv(8,MCRYPT_DEV_URANDOM));
+				$salt = substr($salt,0,8);
+				$saltRow = $this->getEntryByName($hostForm,"salt");
+				$saltRow->entryValue = $salt;
+				return $salt;
+			}
+		
+
+			
+			function isSignup($hostForm){
+				$uEntry = $this->getEntryByName($hostForm,"username");
+				return (! $uEntry->isAutoSet());
+			}
+
+			function getSalt($hostForm){
+				$uEntry = $this->getEntryByName($hostForm,"username");
+				//$_SESSION["check"] = "??? -> " . $uEntry->entryValue;
+				return $this->getUserSalt($uEntry->entryValue);
+			}
+			
+
+			function verifyPassword ($hostForm) {
 				if($this->entryValue === ""){
 					$this->requiredMessage();
 					$this->error = true;
@@ -54,8 +119,32 @@
 					$this->error = true;
 				}
 				else{
-					$this->clearMessage();
-					$this->error = false;
+					if($this->isSignup($hostForm)){
+						$salt = $this->getSalt($hostForm);
+						if($salt!==NULL){
+							$this->message = "The selected username is already being used.";
+							$this->error = true;
+						}
+						else{
+							$salt = $this->makeSalt($hostForm);
+							$this->entryValue = md5( $this->entryValue . $salt );
+							$this->clearMessage();
+							$this->error = false;
+						}	
+					}
+					else{
+						$salt = $this->getSalt($hostForm);
+						if($salt !== NULL){
+							$this->entryValue = md5( $this->entryValue . $salt );
+							$_SESSION["check"]= "yo";
+							$this->clearMessage();
+							$this->error = false;
+						}
+						else{
+							$this->message = "Username does not exist";
+							$this->error = true;
+						}
+					}
 				}
 				return $this->error;
 
@@ -63,23 +152,25 @@
 			
 			function verifyConfirm ($hostForm) {
 				if(gettype($this->entryValue) === "string"){
-					foreach($hostForm->entryList as $eItr){
-						if($eItr->entryType === "password"){
-							if($this->entryValue === $eItr->entryValue){
-								$this->clearMessage();
-								$this->error = false;
-								return $this->error;
-							}
-							else{
-								$this->message = 	"Password confirmation '" .
-													$this->entryValue .
-													"' does not match password '" .
-													$eItr->entryValue . "'";
-								$this->error = true;
-								return $this->error;
-							}
-						}
+					$sEnt = $this->getEntryByName($hostForm,"salt");
+					$salt = $sEnt->entryValue;
+					$this->entryValue = md5( $this->entryValue . $salt );
+					$pEnt = $this->getEntryByName($hostForm,"password");
+					if($this->entryValue === $pEnt->entryValue){
+						$this->clearMessage();
+						$this->error = false;
+						return $this->error;
 					}
+					else{
+						$this->message ="Password confirmation '" .
+								$this->entryValue .
+								"' does not match password '" .
+								$pEnt->entryValue . "'";
+						$this->error = true;
+						return $this->error;
+					}
+					
+					
 				}
 				else{
 					$this->typeErrorMessage();
@@ -154,9 +245,6 @@
 									" entry " . $this->entryName;
 			}
 
-			function makeSalt(){
-				return base64_encode(mcrypt_create_iv(12,MCRYPT_DEV_URANDOM));
-			}
 
 			function load() {
 				if($this->isAutoGet()){
@@ -175,16 +263,16 @@
 			}		
 			
 
-			function verify() {
+			function verify($hostform) {
 				
 				if($this->entryType === "text" || $this->entryType === "textarea"){
 					return $this->verifyText();
 				}
 				else if($this->entryType === "password"){
-					return $this->verifyPassword();
+					return $this->verifyPassword($hostform);
 				}
 				else if($this->entryType === "confirm"){
-					return $this->verifyPassword($this);
+					return $this->verifyConfirm($hostform);
 				}
 				else if($this->entryType === "checkbox"){
 					return $this->verifyCheckbox();
@@ -286,8 +374,8 @@
 			function isPassive(){
 				$res = true;
 				foreach($this->entryList as $entry){
-					$_SESSION["check"]= "lowPass";
-					if($entry->isHidden() || $entry->isAutoGet()){
+					if(!($entry->isHidden() || $entry->isAutoGet())){
+						//$_SESSION["check"] = "NOT PASSIVE";
 						$res = false;
 					}
 				}
@@ -313,7 +401,7 @@
 				$this->error = false;
 				$locErr;
 				foreach($this->entryList as $entry) {
-					$locErr = $entry->verify();
+					$locErr = $entry->verify($this);
 					$ErrMap[$entry->entryName] = $locErr;
 					$this->error = $this->error || $locErr;
 				}
@@ -353,12 +441,16 @@
 							$entry->entryType === "number"){
 							$call .= " " . $val . " ";
 						}
+						else if($entry->entryType === "confirm"){
+							$first = true;
+						}
 						else{
 							$call .= " \"" . $val . "\" ";
 						}
 						
 					}
 					$call .= " ) ";
+					$_SESSION["check"] = $call;
 					$result = mysqli_query($conn, $call);
 					$_SESSION[$aKey]="";
 					if(!$result){
@@ -368,15 +460,18 @@
 					}
 					$_SESSION[$aKey] .= "<script> alert(\"" . $call . "\");</script>";
 					mysqli_close($conn);
+					if($result){
+						$_SESSION["check"] = "checks out";
+					}
 					return $result;
 					
 				}
-				else if($this->isPassive()){
+				else if(($this->isPassive()) || ($this->error == false)){
 					$this->doAutoSets();
 					return NULL;
 				}
 				else{
-					$_SESSION["check"] = "nope";
+					//$_SESSION["check"] = "nope";
 					$_SESSION[$aKey] = "";	
 					$_SESSION[$aKey] .= " <script> \n";
 					foreach($this->entryList as $entry) {
@@ -434,11 +529,12 @@
 
 			function isPassive(){
 				$result = true;
-				$_SESSION["check"] = "nopass ";
+				//$_SESSION["check"] = "nopass ";
 				foreach($this->formList as $form){
-					$_SESSION["check"] = "onepass";
-					if( $form->isPassive()){
+					//$_SESSION["check"] = "onepass";
+					if( !($form->isPassive())){
 						$result = false;
+						//$_SESSION["check"] = "DEF NOT PASSIVE";
 					}
 				}
 				return $result;
@@ -488,6 +584,9 @@
 						$theForm->verify();
 						$result = $theForm->process();
 					}
+				}
+				else{
+					return true;
 				}
 				return $result;
 			}
@@ -660,15 +759,18 @@
 			
 
 			function generatePage(){
+				//$_SESSION["check"]="";
 				if($_POST){
 					$theForm = $this->getActiveForm();
 					$_SESSION["formName"] = $theForm->formName;
 					$formResult = $this->processForm($theForm);
 					if($formResult !== NULL){
 						$theForm->doAutoSets();
+						$_SESSION["check"] = "SOME?THING";
 					}
 					$this->generateHTML($formResult);
 					$_SESSION["content"] = $this->echoText;
+					//$_SESSION["content"] = "LOL";
 					header("Location: " . $_SERVER["REQUEST_URI"],true,301);
 					exit();
 				}
@@ -683,8 +785,9 @@
 						$this->generateHTML(NULL);
 					}// */
 					echo $this->echoText;
-					$form0 = $this->formList[0];
-					echo "<br>" . $form0->isPassive();
+					echo $_SESSION["check"];
+					//$form0 = $this->formList[0];
+					//echo "<br>" . $form0->isPassive();
 					//echo "HAHA";
 				}
 			}
