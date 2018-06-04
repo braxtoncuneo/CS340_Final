@@ -4,7 +4,7 @@
 	session_start();
 
 	
-	include "edit_world_pages.php";
+	include "edit_item_pages.php";
 	include "connectvars.php";
 	include "header.php";
 
@@ -12,7 +12,7 @@
 		new AutoEntry("username","text","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("worlds","getWorlds",$entries,false)
+		new AutoForm("item","viewItems",$entries,false)
 	);
 	$autoGets = array(array("username","Error: To view your worlds, you need to be logged in."));
 	$hasTable = true;
@@ -20,7 +20,7 @@
 	
 
 
-	$page = new AutoPage("Quest Database","View Worlds",$forms,$content,$autoGets,$hasTable,$hasLog);
+	$page = new AutoPage("Quest Database","View Items",$forms,$content,$autoGets,$hasTable,$hasLog);
 	
 	$page->generatePage();
 ?>

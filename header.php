@@ -298,13 +298,15 @@
 			}
 
 
-			function generate($hostForm) {
+			function generate($hostForm,$singlet) {
 				$res = "";
 				if($this->entryType === "textarea"){
 					
-					$res .= "<p>\n";
-					$res .= "<label for='" . $this->entryName . "'>\n" .
+					if($singlet === NULL){
+						$res .= "<p>\n";
+						$res .= "<label for='" . $this->entryName . "'>\n" .
 							$this->entryName . ":</label>";
+					}
 					$res .= "<textarea  rows='8' cols='32' " .
 							" name='" . $this->entryName . "'" .
 							" form='" . $hostForm->formName . "'";
@@ -315,17 +317,23 @@
 					$res .= ">\n";
 					$res .= $ErrMap[$this->entryName];
 					$res .= "</textarea>\n";
-					$res .= "</p>\n";
+					if($singlet === NULL){
+						$res .= "</p>\n";
+					}
 					
 				}
 				else{
 					
 					$realType = $this->htmlEntryType($this->entryType);
 				
-					
-					$res .= "<p>\n";
-					$res .= "<label for='" . $this->entryName . "'>\n" .
-							$this->entryName . ":</label>";
+					if($singlet === NULL){
+						$res .= "<p>\n";
+						if(!($this->isHidden() || $this->isAutoGet())){
+							$res .= "<label for='" . $this->entryName . "'>\n" .
+								$this->entryName . ":</label>";
+						}
+					}
+
 					$res .= "<input" . " type='" . $realType . "'" .
 									" name='" . $this->entryName . "'" .
 									" id='" . $this->entryName . "'" .
@@ -337,7 +345,9 @@
 					$res .= ">\n";
 					$res .= $ErrMap[$this->entryName];
 					$res .= "\n</input>\n";
-					$res .= "</p>\n";
+					if($singlet === NULL){
+						$res .= "</p>\n";
+					}
 					
 						
 				}
@@ -369,6 +379,21 @@
 			var $authorized;
 			var $error;
 			var $echoText;
+
+			function getSinglet(){
+				$res = NULL;
+				$count = 0;
+				foreach($this->entryList as $entry){
+					if(!($entry->isHidden() || $entry->isAutoGet())){
+						$count = $count + 1;
+						$res = $entry;
+					}
+				}
+				if($count !== 1){
+					$res = NULL;
+				}
+				return $res;
+			}
 
 
 			function isPassive(){
@@ -487,19 +512,26 @@
 			
 			
 			function generate() {
+				$singlet = $this->getSinglet();
 				$res = "";
 				$res .= "<form method='post' id='" . $this->formName . "'>\n";
 				$res .= "<fieldset>\n";
+				if($singlet){
+					$res .= "<input type='submit' value='".
+						$this->formName . "' /> ";
+				}
 				foreach($this->entryList as $entry) {
-					$res .= $entry->generate($this);
+					$res .= $entry->generate($this,$singlet);
 				}
 				$res .= "<input hidden type='hidden' name='formName' " . 
 					" value='" . $this->formName . "'> </input>";
 				$res .= "</fieldset>\n";
-				$res .= "<p>\n";
-				$res .= "<input type = 'submit'  value = 'submit' />";
-				$res .= "<input type = 'reset'  value = 'reset' />";
-				$res .= "</p>\n";
+				if($singlet === NULL){
+					$res .= "<p>\n";
+					$res .= "<input type='submit' value='submit' />";
+					$res .= "<input type='reset'  value='reset' />";
+					$res .= "</p>\n";
+				}
 				$res .= "</form>";
 				return $res;
 			}
@@ -736,7 +768,9 @@
 					$this->etch("<body>\n");
 					$this->etch("--> " . $theForm->formName . " <--");
 					$this->etch($this->generateHeader());
+					$this->etch("<br>");
 					$this->etch($this->generateNavBar());
+					$this->etch("<br>");
 					if($agErr === ""){
 						if($this->isPassive()){
 							$theForm = $this->formList[0];

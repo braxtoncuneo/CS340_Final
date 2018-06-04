@@ -4,7 +4,7 @@
 	session_start();
 
 	
-	include "release_pages.php";
+	include "home_pages.php";
 	include "connectvars.php";
 	include "header.php";
 

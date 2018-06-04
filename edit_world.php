@@ -4,18 +4,20 @@
 	session_start();
 
 	
-	include "home_pages.php";
+	include "edit_world_pages.php";
 	include "connectvars.php";
 	include "header.php";
 
 	$entries = array(
-		new AutoEntry("username","text","autoset","",true),
-		new AutoEntry("password","password","regular","",true)
+		new AutoEntry("world","number","autoset","",true),
+		new AutoEntry("username","username","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("Sign In",NULL,$entries,false)
+		new AutoForm("Edit World",NULL,$entries,false)
 	);
-	$autoGets = array();
+	$autoGets = array(
+		array("username","You need to be signed in to select a world to edit.")
+	);
 	$hasTable = false;
 	$hasLog = false;
 	

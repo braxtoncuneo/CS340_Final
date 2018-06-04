@@ -191,6 +191,7 @@ footer {
 .container1 {
 	margin-left: 20px;
 	font-size: 0.75em;
+	//border: none;
 }
 legend {
     padding: 1px 8px;
@@ -203,6 +204,7 @@ legend {
 form {
     display: block;
     margin-top: 0em;
+    border-style: none;
 }
 
 fieldset label {
