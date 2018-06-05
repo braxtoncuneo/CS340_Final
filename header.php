@@ -1,4 +1,15 @@
 <?php
+
+	function consumeResults(){
+    		global $mysqli;
+
+		do {
+			if ($res = $mysqli->store_result()) {
+				$res->free();
+			}
+		} while ($mysqli->more_results() && $mysqli->next_result());        
+	}
+
 	
 		class AutoEntry {
 
@@ -67,11 +78,12 @@
 
 			function getUserSalt($username){
 				$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-				
+			
+				//consumeResults();	
 				$call = "SELECT salt FROM player WHERE username = '" . 
 					mysqli_real_escape_string($conn,$username) . "'";
 					
-				$table = mysqli_query($conn, $call);
+				$table = mysqli_query($conn, $call);//, MYSQLI_USE_RESULT);
 				
 				$res = NULL;
 				if($table){
@@ -162,10 +174,9 @@
 						return $this->error;
 					}
 					else{
-						$this->message ="Password confirmation '" .
-								$this->entryValue .
-								"' does not match password '" .
-								$pEnt->entryValue . "'";
+						if($pEnt->entryValue !== ""){
+							$this->message ="Password confirmation does not match password";
+						}
 						$this->error = true;
 						return $this->error;
 					}
@@ -227,8 +238,10 @@
 			}
 
 			function requiredMessage(){
-				$this->message = "Value error: no value for required entry '" .
+				if(!( ($this->isHidden()) || ($this->isAutoGet) )){
+					$this->message = "Value error: no value for required entry '" .
 								  $this->entryName . "'";
+				}
 			}
 
 			function valueErrorMessage(){
@@ -315,7 +328,7 @@
 						$res .= " class='bad' ";
 					}
 					$res .= ">\n";
-					$res .= $ErrMap[$this->entryName];
+					//$res .= $ErrMap[$this->entryName];
 					$res .= "</textarea>\n";
 					if($singlet === NULL){
 						$res .= "</p>\n";
@@ -343,7 +356,7 @@
 						$res .= " class='bad' ";
 					}
 					$res .= ">\n";
-					$res .= $ErrMap[$this->entryName];
+					//$res .= $ErrMap[$this->entryName];
 					$res .= "\n</input>\n";
 					if($singlet === NULL){
 						$res .= "</p>\n";
@@ -378,6 +391,7 @@
 			var $entryList;
 			var $authorized;
 			var $error;
+			var $message;
 			var $echoText;
 
 			function getSinglet(){
@@ -443,12 +457,13 @@
 
 			function process() {
 
-				$aKey = "alert";
+				
+				//$aKey = "alert";
 				if( ($this->error == false ) && ($this->formProc !== NULL) ) {
 					//$_SESSION["check"] = "woah";
 					
 					$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-					
+					//consumeResults();			
 					$call = "CALL " . $this->formProc . " ( ";
 					$val;
 					$first = true;
@@ -476,18 +491,20 @@
 					}
 					$call .= " ) ";
 					$_SESSION["check"] = $call;
-					$result = mysqli_query($conn, $call);
-					$_SESSION[$aKey]="";
+					$result = mysqli_query($conn, $call);//, MYSQLI_USE_RESULT);
+					//$_SESSION[$aKey]="";
 					if(!$result){
-						$_SESSION[$aKey] = "<script>" .
-						"alert(\"" . mysqli_error($conn) . "\");" .
-						"</script>";
+						//$_SESSION[$aKey] = "<script>" .
+						$this->message .= "<br> ERROR: " . mysqli_error($conn);  
+						$this->error = true;
+						//"</script>";
 					}
+					//$_SESSION["check"] =  "Result: " . ($result !== NULL);
 					$_SESSION[$aKey] .= "<script> alert(\"" . $call . "\");</script>";
 					mysqli_close($conn);
-					if($result){
+					/*if($result){
 						$_SESSION["check"] = "checks out";
-					}
+					}*/
 					return $result;
 					
 				}
@@ -496,15 +513,17 @@
 					return NULL;
 				}
 				else{
+					$_SESSION["check"] = "L";
+					$this->error = true;
 					//$_SESSION["check"] = "nope";
-					$_SESSION[$aKey] = "";	
-					$_SESSION[$aKey] .= " <script> \n";
+					//$_SESSION[$aKey] = "";	
+					//$_SESSION[$aKey] .= " <script> \n";
 					foreach($this->entryList as $entry) {
 						if($entry->message !== ""){
-							$_SESSION[$aKey] .= " alert(\"" . $entry->message . "\");\n";
+							$this->message .= "<br>ERROR: " . $entry->message;
 						}
 					}
-					$_SESSION[$aKey] .= " </script>\n";
+					//$_SESSION[$aKey] .= " </script>\n";
 					
 					return NULL;
 				}
@@ -543,6 +562,7 @@
 				$this->authorized = $fAuthorized;
 				$this->error = false;
 				$this->echoText = "";
+				$this->message = "";
 			}
 			
 		}
@@ -557,7 +577,8 @@
 			var $hasTable;
 			var $hasLog;
 			var $echoText;
-
+			var $message;
+			
 
 			function isPassive(){
 				$result = true;
@@ -615,6 +636,7 @@
 						$theForm->loadValues();
 						$theForm->verify();
 						$result = $theForm->process();
+						$this->message .= $theForm->message;
 					}
 				}
 				else{
@@ -757,6 +779,16 @@
 				return $res;
 			}
 
+			function generateError(){
+				$res = "";
+				if($this->message !== ""){
+					$res .= "<div class='err'>";
+					$res .= $this->message;
+					$res .=	"</div>";
+				}
+				return $res;
+			}
+
 			function generateHTML($formResult){
 					$agErr = $this->checkAutoGets(); 
 					$this->etch("<!DOCTYPE html>\n");
@@ -766,7 +798,7 @@
 					$this->etch("<link rel='stylesheet' href='index.css'>");
 					$this->etch("</head>\n");
 					$this->etch("<body>\n");
-					$this->etch("--> " . $theForm->formName . " <--");
+					//$this->etch("--> " . $theForm->formName . " <--");
 					$this->etch($this->generateHeader());
 					$this->etch("<br>");
 					$this->etch($this->generateNavBar());
@@ -776,16 +808,18 @@
 							$theForm = $this->formList[0];
 							$formResult = $this->processForm($theForm);
 							$theForm->doAutoSets();
+							$this->etch($this->generateError());
 							$this->etch($this->generateTable($formResult));
 						}
 						else{
+							$this->etch($this->generateError());
 							$this->etch($this->generateContent($formResult));
 						}
 					}
 					else{
 						$this->etch($agErr);
 					}
-					$this->etch($_SESSION["alert"]);
+					
 					$this->etch($_SESSION["check"]);
 					$this->etch("</body>\n");
 					$this->etch("</html>\n");
@@ -793,14 +827,14 @@
 			
 
 			function generatePage(){
-				//$_SESSION["check"]="";
+				$_SESSION["check"]="";
 				if($_POST){
 					$theForm = $this->getActiveForm();
 					$_SESSION["formName"] = $theForm->formName;
 					$formResult = $this->processForm($theForm);
-					if($formResult !== NULL){
+					if(! $theForm->error ){
 						$theForm->doAutoSets();
-						$_SESSION["check"] = "SOME?THING";
+						//$_SESSION["check"] = "SOME?THING";
 					}
 					$this->generateHTML($formResult);
 					$_SESSION["content"] = $this->echoText;
@@ -835,6 +869,7 @@
 				$this->hasTable = $hTable;
 				$this->hasLog = $hLog;
 				$this->echoText = "";
+				$this->message = "";
             		}
 	
 	}

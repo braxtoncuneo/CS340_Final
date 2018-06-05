@@ -3,6 +3,12 @@
 	error_reporting(E_ALL);
 	session_start();
 
+	if($_SERVER['SERVER_PORT'] !== 443 &&
+   		(empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
+  		header('Location: https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+  		exit;
+	}
+
 	
 	include "home_pages.php";
 	include "connectvars.php";
@@ -13,7 +19,7 @@
 		new AutoEntry("password","password","regular","",true)
 	);
 	$forms = array(
-		new AutoForm("Sign In",NULL,$entries,false)
+		new AutoForm("Sign In","signIn",$entries,false)
 	);
 	$autoGets = array();
 	$hasTable = false;

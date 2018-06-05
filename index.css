@@ -59,10 +59,12 @@ nav li {
     box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
 }	
 
+/*
 nav li:nth-last-child(-n+4){
     float: right;
     border:2px solid lime;
 }
+*/
 
 nav li a {
     display: block;
@@ -291,6 +293,7 @@ td {
 }
 table#t01 {
 	width:400px;
+	margin: auto;
 }
 
 table#t01 td {
@@ -334,8 +337,9 @@ caption {
 }
 
 .bad {
-  background : red;
+  background : lime;
   color: black;
+  box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
 }
 label{
   //background: black;
@@ -371,5 +375,13 @@ label{
     text-shadow: 0 0 8px #88FF88;
     box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
     border: solid lime 2px;
+}
+
+
+.err{
+   border: solid lime 2px;
+   background: lime;
+   color: black;
+   box-shadow: inset 0 0  8px #88FF88, 0 0  8px #88FF88;
 }
 

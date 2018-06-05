@@ -13,7 +13,7 @@
 		new AutoEntry("username","text","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("worlds","getWorlds",$entries,false)
+		new AutoForm("worlds","viewWorlds",$entries,false)
 	);
 	$autoGets = array(array("username","Error: To view your worlds, you need to be logged in."));
 	$hasTable = true;
