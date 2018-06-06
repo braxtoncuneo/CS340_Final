@@ -5,7 +5,7 @@
 		"SIGN UP" => "sign_up.php",
 		"LOG OUT" => "log_out.php",
 		"LOG IN" => "log_in.php",
-		"EDIT WORLD" => "edit_world.php",
+		"EDIT WORLD" => "select_world.php",
 		"PLAY GAME" => "play_game.php"		
 	);
 ?>

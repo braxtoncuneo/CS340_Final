@@ -10,10 +10,10 @@
 
 	$entries = array(
 		new AutoEntry("world","number","autoset","",true),
-		new AutoEntry("username","username","autoget","",true)
+		new AutoEntry("username","text","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("Edit World","selectWorld",$entries,false)
+		new AutoForm("Select World","selectWorld",$entries,false)
 	);
 	$autoGets = array(
 		array("username","You need to be signed in to select a world to edit.")

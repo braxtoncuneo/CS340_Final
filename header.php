@@ -225,6 +225,9 @@
 						$this->valueErrorMessage();
 					}
 				}
+				if(gettype($this->entryValue) === "integer"){
+					$this->error = false;
+				} 
 				else{
 					$this->typeErrorMessage();
 				}
@@ -578,7 +581,29 @@
 			var $hasLog;
 			var $echoText;
 			var $message;
+		
+
+			function fetchWorldName($worldNo){
+				$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 			
+				//consumeResults();	
+				$call = "SELECT worldName FROM world WHERE wID = " . 
+					mysqli_real_escape_string($conn,$worldNo) . ";";
+				//$_SESSION["check"] = $call;
+				$table = mysqli_query($conn, $call);//, MYSQLI_USE_RESULT);
+				
+				$res = NULL;
+				if($table){
+					$row = mysqli_fetch_row($table);
+					//$_SESSION["check"] = $row[0] . "---";
+					if($row){
+						$res = $row[0] ;
+					}
+				}
+				mysqli_close($conn);
+				return $res;
+				
+			}	
 
 			function isPassive(){
 				$result = true;
@@ -667,7 +692,12 @@
 						"";
 
 				if(isset($_SESSION["username"])){
-					$res .= " - Welcome " . $_SESSION["username"];
+					$res .= " - As " . $_SESSION["username"];
+				
+					if(isset($_SESSION["world"])){
+						$res .= " - Editing '" .  
+							$this->fetchWorldName($_SESSION["world"]) . "'";
+					}
 				}
 				$res .= "</header>";
 				return $res;

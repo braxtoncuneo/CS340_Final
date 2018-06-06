@@ -10,7 +10,8 @@
 	include "connectvars.php";
 	include "header.php";
 
-		
+
+			
 	$pickup = new AutoForm(
 		"PICK UP","pickup",array(
 		new AutoEntry("item","text","regular","",true),

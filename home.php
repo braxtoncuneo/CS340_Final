@@ -8,6 +8,8 @@ include "home_pages.php";
 include "connectvars.php";
 include "header.php";
 
+//unset($_SESSION["world"]);
+
 $forms = array();
 $hasTable = false;
 $hasLog = false;
