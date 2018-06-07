@@ -4,25 +4,25 @@
 	session_start();
 
 	
-	include "edit_item_pages.php";
+	include "edit_world_pages.php";
 	include "connectvars.php";
 	include "header.php";
 
 	$entries = array(
-		new AutoEntry("NAME","text","regular","",true),
+		new AutoEntry("DELETE WORLD?","text","regular","NO",true),
 		new AutoEntry("world","number","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("Remove Item","removeItem",$entries,false)
+		new AutoForm("Delete World","deleteWorld",$entries,false)
 	);
 	$autoGets = array(
-		array("username","Error: You need to be signed in to select a world to edit."),
+		array("username","Error: You need to be signed in to edit a world."),
 		array("world","Error: You need to select a world in order to edit it.")
 	);
 	$hasTable = false;
 	$hasLog = false;
 	
-	$page = new AutoPage("Quest Database","Remove Item",$forms,$content,$autoGets,$hasTable,$hasLog);
+	$page = new AutoPage("Quest Database","Delete Item",$forms,$content,$autoGets,$hasTable,$hasLog);
 	
 	$page->generatePage();
 ?>

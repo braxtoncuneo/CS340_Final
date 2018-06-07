@@ -4,22 +4,21 @@
 	session_start();
 
 	
-	include "edit_item_pages.php";
+	include "edit_place_pages.php";
 	include "connectvars.php";
 	include "header.php";
 
 	$entries = array(
 		new AutoEntry("NAME","text","regular","",true),
-		new AutoEntry("DESCRIPTION","text","regular","",true),
-		new AutoEntry("LOCATION","text","regular","",true),
+		new AutoEntry("DESCRIPTION","textarea","regular","",true),
 		new AutoEntry("world","number","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("Add Item","addItem",$entries,false)
+		new AutoForm("Make Place","makePlace",$entries,false)
 	);
 	$autoGets = array(
 		array("username","Error: You need to be signed in to select a world to edit."),
-		array("world","Error: You need to select a world in order to edit it.")
+		array("world","Error: You need to select a world in order to make a place.")
 	);
 	$hasTable = false;
 	$hasLog = false;
