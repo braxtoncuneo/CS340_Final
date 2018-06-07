@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 04, 2018 at 09:21 PM
+-- Generation Time: Jun 07, 2018 at 03:54 PM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -42,6 +42,39 @@ VALUES (world,location,name,state);
 
 END$$
 
+DROP PROCEDURE IF EXISTS `deleteItem`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deleteItem` (IN `iName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+DELETE FROM item
+WHERE itemName = iName AND wID = worldNo;
+
+END$$
+
+DROP PROCEDURE IF EXISTS `deletePlace`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deletePlace` (IN `pName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+DELETE FROM place
+WHERE placeName = pName AND wID = worldNo;
+
+END$$
+
+DROP PROCEDURE IF EXISTS `deleteWorld`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deleteWorld` (IN `confirm` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+IF TRIM(confirm) = 'YES'
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'You must enter \'YES\' to confirm world deletion.';
+END IF;
+
+DELETE FROM world
+WHERE wID = worldNo;
+
+END$$
+
 DROP PROCEDURE IF EXISTS `dropItem`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `dropItem` (IN `save` INT, IN `itemN` VARCHAR(255), IN `worldID` INT)  MODIFIES SQL DATA
 UPDATE item_location
@@ -58,6 +91,41 @@ BEGIN
 SELECT * FROM player;
 END$$
 
+DROP PROCEDURE IF EXISTS `makeItem`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makeItem` (IN `iName` VARCHAR(255), IN `iLocation` VARCHAR(255), IN `iDesc` TEXT, IN `iReq` VARCHAR(255), IN `sText` TEXT, IN `fText` TEXT, IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+
+IF NOT EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = iLocation
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered location does not exist in this world.';
+END IF;
+
+
+INSERT INTO item (itemName, description, wID)
+VALUES (iName,iDesc,worldNo);
+
+INSERT INTO item_location (wID, placeName, itemName,sID)
+VALUES (worldNo, iLocation, iName, (
+    SELECT sID
+    FROM default_state
+    WHERE wID = worldNo
+    )
+);
+
+IF iReq = NULL
+THEN
+INSERT INTO item_req (itemName, reqName, wID, success_text, failure_text)
+VALUES (iName,iReq,worldNo,sText,fText);
+END IF;
+
+END$$
+
 DROP PROCEDURE IF EXISTS `makeMessage`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makeMessage` (IN `sender` TEXT, IN `reciever` TEXT, IN `body` TEXT, IN `secretNumber` INT)  MODIFIES SQL DATA
 BEGIN
@@ -72,6 +140,15 @@ VALUES (sender,reciever,body,secretNumber);
 INSERT INTO ret (logText) VALUES (CONCAT(sender," tells ",reciever," : ",body));
 
 SELECT * FROM ret;
+END$$
+
+DROP PROCEDURE IF EXISTS `makePlace`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makePlace` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `worldNo` INT)  NO SQL
+BEGIN
+
+INSERT INTO place (placeName, description, wID)
+VALUES (pName,descText,worldNo);
+
 END$$
 
 DROP PROCEDURE IF EXISTS `makeWorld`$$
@@ -183,11 +260,37 @@ INSERT INTO player (username, password_hash, salt)
 VALUES (uName,passHash,saltVal);
 END$$
 
+DROP PROCEDURE IF EXISTS `viewItems`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewItems` (IN `worldNo` INT(255))  NO SQL
+BEGIN
+
+SELECT I.itemName AS NAME, IL.placeName as LOCATION, I.description AS DESCRIPTION, IF(ISNULL(IR.reqName),'NO REQUIREMENT',IR.reqName) AS REQUIREMENT, IR.success_text as SUCCESS_TEXT, IR.failure_text AS FAILURE_TEXT
+FROM item AS I
+INNER JOIN item_location AS IL ON IL.wID = I.wID AND IL.itemName = I.itemName
+LEFT JOIN item_req AS IR ON IR.wID = I.wID AND IR.itemName = I.itemName
+WHERE I.wID = worldNo AND IL.sID = (
+ 	SELECT sID
+    FROM default_state
+    WHERE wID = worldNo
+);
+
+END$$
+
+DROP PROCEDURE IF EXISTS `viewPlaces`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewPlaces` (IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+SELECT P.placeName AS NAME, P.description AS DESCRIPTION
+FROM place AS P
+WHERE P.wID = worldNo;
+
+END$$
+
 DROP PROCEDURE IF EXISTS `viewWorlds`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewWorlds` (IN `uName` VARCHAR(255))  MODIFIES SQL DATA
 BEGIN
 
-SELECT W.wID AS ID, W.worldName AS NAME, IF(W.private=1,'TRUE','FALSE') AS PRIVATE, AVG(R.rating) AS RATING 
+SELECT W.wID AS ID, W.worldName AS NAME, IF(W.private=1,'TRUE','FALSE') AS PRIVATE, IF(ISNULL(AVG(R.rating)),'NOT RATED',AVG(R.rating)) AS RATING 
 FROM world AS W
 LEFT JOIN world_rating AS R ON R.wID = W.wID
 WHERE W.owner = uName
@@ -196,6 +299,37 @@ GROUP BY W.wID;
 END$$
 
 DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `default_state`
+--
+
+DROP TABLE IF EXISTS `default_state`;
+CREATE TABLE `default_state` (
+  `sID` int(11) NOT NULL,
+  `wID` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `default_state`
+--
+
+INSERT INTO `default_state` (`sID`, `wID`) VALUES
+(1, 1),
+(2, 2),
+(3, 3),
+(4, 4),
+(5, 5),
+(12, 7),
+(13, 8),
+(14, 9),
+(15, 10),
+(16, 11),
+(17, 12),
+(18, 13),
+(19, 14);
 
 -- --------------------------------------------------------
 
@@ -220,14 +354,18 @@ INSERT INTO `item` (`itemName`, `description`, `wID`) VALUES
 ('key', 'A worn key.', 1),
 ('ladder', 'A metal step ladder. Old, but sturdy.', 1),
 ('mushroom', 'It is quite large and probably poisonous.', 1),
+('music box', 'It is ornately carved.', 13),
 ('paddle', 'Half rotten away. Must have been for the boat.', 1),
 ('rock', 'It is a rock.', 4),
 ('rope', 'A spool of rope.', 1),
 ('skeleton', 'The skull has a large bite mark on it.', 1),
+('Spooky Skull', 'It chatters softly.', 13),
 ('swimming trunks', 'A nice swimming suit.', 1),
 ('tea', 'You refuse to leave the room before drinking it.', 1),
 ('telescope', 'The telescope looks out onto the horizon.', 3),
-('test object', 'Replace with actual item later.', 2);
+('test object', 'Replace with actual item later.', 2),
+('Test Object', 'This is a test', 14),
+('Toy Car', 'It is so old, most of the paint has peeled off.', 13);
 
 --
 -- Triggers `item`
@@ -278,6 +416,7 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'beach', 'rope', 6),
 (1, 'beach', 'rope', 8),
 (1, 'beach', 'rope', 10),
+(13, 'Black Lodge Entranceway', 'Spooky Skull', 18),
 (1, 'cave', 'bear trap', 1),
 (1, 'cave', 'bear trap', 6),
 (1, 'cave', 'bear trap', 8),
@@ -310,9 +449,7 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'lake', 'paddle', 6),
 (1, 'lake', 'paddle', 8),
 (1, 'lake', 'paddle', 10),
-(3, 'second floor', 'telescope', 3),
-(2, 'start', 'test object', 2),
-(2, 'start', 'test object', 7);
+(3, 'second floor', 'telescope', 3);
 
 -- --------------------------------------------------------
 
@@ -324,19 +461,21 @@ DROP TABLE IF EXISTS `item_req`;
 CREATE TABLE `item_req` (
   `itemName` varchar(255) NOT NULL,
   `reqName` varchar(255) NOT NULL,
-  `wID` int(11) NOT NULL
+  `wID` int(11) NOT NULL,
+  `success_text` text NOT NULL,
+  `failure_text` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `item_req`
 --
 
-INSERT INTO `item_req` (`itemName`, `reqName`, `wID`) VALUES
-('mushroom', 'bear trap', 1),
-('tea', 'mushroom', 1),
-('key', 'paddle', 1),
-('ladder', 'paddle', 1),
-('bear trap', 'skeleton', 1);
+INSERT INTO `item_req` (`itemName`, `reqName`, `wID`, `success_text`, `failure_text`) VALUES
+('bear trap', 'skeleton', 1, '', ''),
+('key', 'paddle', 1, '', ''),
+('ladder', 'paddle', 1, '', ''),
+('mushroom', 'bear trap', 1, '', ''),
+('tea', 'mushroom', 1, '', '');
 
 -- --------------------------------------------------------
 
@@ -418,6 +557,39 @@ INSERT INTO `message` (`id`, `sender`, `reciever`, `body`, `secretNumber`) VALUE
 (61, '1', '2', '3', 4),
 (62, 'v', 'b', 'n', 8),
 (63, 'Way', 'Down', 'in the valley', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `MinimumGPA`
+--
+
+DROP TABLE IF EXISTS `MinimumGPA`;
+CREATE TABLE `MinimumGPA` (
+  `cName` varchar(255) NOT NULL,
+  `major` varchar(255) NOT NULL,
+  `minGPA` decimal(3,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `MinimumGPA`
+--
+
+INSERT INTO `MinimumGPA` (`cName`, `major`, `minGPA`) VALUES
+('Cornell', 'bioengineering', '3.80'),
+('Cornell', 'CS', '3.40'),
+('Cornell', 'EE', '3.60'),
+('Cornell', 'history', '3.60'),
+('Cornell', 'psychology', '2.80'),
+('MIT', 'bioengineering', '3.50'),
+('MIT', 'biology', '3.50'),
+('MIT', 'CS', '3.90'),
+('MIT', 'marine biology', '3.50'),
+('OSU', 'CS', '3.75'),
+('OSU', 'EE', '3.50'),
+('OSU', 'history', '2.80'),
+('U of O', 'biology', '3.75'),
+('U of O', 'CS', '3.60');
 
 -- --------------------------------------------------------
 
@@ -510,11 +682,13 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('a rose patch', 'It is quite prickly here.', 4),
 ('a tree', 'There is a tree. It is big.', 4),
 ('beach', 'It is sandy here, and there is water.', 1),
+('Black Lodge Entranceway', 'The forboding decor in the entrance hall goes to show visitors they are not in for a fun time.', 13),
 ('cave', 'It is dark. you are likely to be eaten by a grue.', 1),
 ('field', 'The meadow is sunny and pleasant.', 1),
 ('first floor', 'You can see some stairs and a secretary desk.', 3),
 ('house', 'It is a small but serviceable cabin.', 1),
 ('lake', 'The water is deep and murky.', 1),
+('Red Room', 'It is spooky and from Twin Peaks.', 13),
 ('second floor', 'Looking out the window, you can see your house from here.', 3),
 ('start', '', 1),
 ('start', '', 2),
@@ -525,7 +699,9 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('start', '', 8),
 ('start', '', 9),
 ('start', '', 10),
-('start', '', 11);
+('start', '', 11),
+('start', '', 12),
+('start', '', 14);
 
 --
 -- Triggers `place`
@@ -646,7 +822,10 @@ INSERT INTO `save_state` (`sID`, `wID`, `placeName`) VALUES
 (13, 8, 'start'),
 (14, 9, 'start'),
 (15, 10, 'start'),
-(16, 11, 'start');
+(16, 11, 'start'),
+(17, 12, 'start'),
+(18, 13, 'start'),
+(19, 14, 'start');
 
 --
 -- Triggers `save_state`
@@ -688,7 +867,10 @@ INSERT INTO `world` (`wID`, `worldName`, `private`, `owner`) VALUES
 (8, 'bluh', 1, 'alice'),
 (9, 'USA', 1, 'Grover'),
 (10, 'M', 1, 'Heisenberg'),
-(11, 'Y tho', 1, 'Heisenberg');
+(11, 'Y tho', 1, 'Heisenberg'),
+(12, 'Test World', 1, 'Grover'),
+(13, 'The Church', 1, 'Faythe'),
+(14, 'Test world', 1, 'Faythe');
 
 --
 -- Triggers `world`
@@ -749,6 +931,13 @@ INSERT INTO `world_rating` (`username`, `wID`, `rating`) VALUES
 --
 
 --
+-- Indexes for table `default_state`
+--
+ALTER TABLE `default_state`
+  ADD PRIMARY KEY (`wID`),
+  ADD KEY `sID` (`sID`);
+
+--
 -- Indexes for table `item`
 --
 ALTER TABLE `item`
@@ -778,6 +967,12 @@ ALTER TABLE `item_req`
 --
 ALTER TABLE `message`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `MinimumGPA`
+--
+ALTER TABLE `MinimumGPA`
+  ADD PRIMARY KEY (`cName`,`major`);
 
 --
 -- Indexes for table `path`
@@ -851,17 +1046,24 @@ ALTER TABLE `message`
 -- AUTO_INCREMENT for table `save_state`
 --
 ALTER TABLE `save_state`
-  MODIFY `sID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `sID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `world`
 --
 ALTER TABLE `world`
-  MODIFY `wID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `wID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `default_state`
+--
+ALTER TABLE `default_state`
+  ADD CONSTRAINT `default_state_ibfk_1` FOREIGN KEY (`sID`) REFERENCES `save_state` (`sID`),
+  ADD CONSTRAINT `default_state_ibfk_2` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
 
 --
 -- Constraints for table `item`
@@ -885,6 +1087,12 @@ ALTER TABLE `item_req`
   ADD CONSTRAINT `item_req_ibfk_1` FOREIGN KEY (`itemName`,`wID`) REFERENCES `item` (`itemName`, `wID`),
   ADD CONSTRAINT `item_req_ibfk_2` FOREIGN KEY (`reqName`,`wID`) REFERENCES `item` (`itemName`, `wID`),
   ADD CONSTRAINT `item_req_ibfk_3` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
+
+--
+-- Constraints for table `MinimumGPA`
+--
+ALTER TABLE `MinimumGPA`
+  ADD CONSTRAINT `MinimumGPA_ibfk_1` FOREIGN KEY (`cName`) REFERENCES `College` (`cName`);
 
 --
 -- Constraints for table `path`
