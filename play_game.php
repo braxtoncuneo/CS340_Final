@@ -10,19 +10,23 @@
 	include "connectvars.php";
 	include "header.php";
 
-
+	// change later
+	$_SESSION["save"] = 26;
+	$_SESSION["world"] = 21;	
 			
 	$pickup = new AutoForm(
 		"PICK UP","pickup",array(
 		new AutoEntry("item","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+                new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 	
 	$drop = new AutoForm(
-		"DROP","drop",array(
+		"DROP","dropItem",array(
 		new AutoEntry("item","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+                new AutoEntry("save","number","autoget","",true),
+                new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 
