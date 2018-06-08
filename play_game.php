@@ -43,11 +43,24 @@
 		new AutoEntry("save","number","autoget","",true)
 		),false
 	);
-		
+	
+	$inventory = new AutoForm(
+		"INVENTORY","showInventory",array(
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
+		),false
+	);
+	
+	$currLocation = new AutoForm(
+		"CURRENT ROOM","showLocation",array(
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
+		),false
+	);
 
-	$forms = array(	$pickup, $drop, $lookat, $govia	);
+	$forms = array( $pickup, $drop, $lookat, $govia, $currLocation, $inventory );
 	$aGets = array(array("username","You need to be logged in to play a game"));
-	$hasTable = false;
+	$hasTable = true;
 	$hasLog = true;
 	$page = new AutoPage("QUEST DATABASE","Play Game",$forms,$content,$aGets,$hasTable,$hasLog);
 	
