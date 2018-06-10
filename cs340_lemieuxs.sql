@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 09, 2018 at 08:36 PM
+-- Generation Time: Jun 09, 2018 at 09:15 PM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -214,16 +214,49 @@ VALUES (wName,true,uName);
 
 END$$
 
-CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `pickup` (IN `item` VARCHAR(255), IN `save` INT, IN `worldID` INT)  NO SQL
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `pickUp` (IN `item` VARCHAR(255), IN `save` INT, IN `worldID` INT)  NO SQL
 BEGIN
-/*
-Check if item is in the current room and if user has the required item?
-Create inventory place if it doesn't exist?
-*/
 
-UPDATE item_location
-SET placeName = 'inventory'
-WHERE itemName = item AND sID = save and wID = worldID;
+DECLARE curr_location VARCHAR(255);
+DECLARE req_item VARCHAR(255);
+SET curr_location = (SELECT placeName
+	FROM save_state S
+	WHERE S.sID = save
+);
+
+/* Check if item is in the current room */
+IF EXISTS (SELECT 1
+    FROM item_location I
+    WHERE I.sID = save AND I.wID = worldID AND I.itemName = item AND I.placeName = curr_location) THEN
+    
+    /* Check if there is a required item */
+	IF EXISTS (SELECT 1
+    FROM item_req I2
+    WHERE I2.wID = worldID AND I2.itemName = item) THEN
+    
+        SET req_item = (SELECT I3.reqName
+        FROM item_req I3
+        WHERE I3.wID = worldID AND I3.itemName = item
+        );
+        
+        /* Check if player's inventory contains the required item */
+        IF EXISTS (SELECT 1
+        FROM item_location I1
+        WHERE I1.wID = worldID AND I1.sID = save AND I1.placeName = 'inventory' AND itemName = req_item) THEN
+        	/* add to inventory */
+            UPDATE item_location
+            SET placeName = 'inventory'
+            WHERE itemName = item AND sID = save and wID = worldID;
+        END IF;
+ 	ELSE
+    	/* add to inventory */
+        UPDATE item_location
+        SET placeName = 'inventory'
+        WHERE itemName = item AND sID = save and wID = worldID;
+    
+    END IF;
+    
+END IF;
 
 
 END$$
@@ -547,6 +580,7 @@ CREATE TABLE `item_req` (
 
 INSERT INTO `item_req` (`itemName`, `reqName`, `wID`, `success_text`, `failure_text`) VALUES
 ('bear trap', 'skeleton', 1, '', ''),
+('item2', 'item1', 21, '', ''),
 ('key', 'paddle', 1, '', ''),
 ('ladder', 'paddle', 1, '', ''),
 ('mushroom', 'bear trap', 1, '', ''),
@@ -870,7 +904,7 @@ INSERT INTO `save_state` (`sID`, `wID`, `placeName`) VALUES
 (17, 12, 'start'),
 (18, 13, 'start'),
 (19, 14, 'start'),
-(26, 21, 'place2');
+(26, 21, 'start');
 
 --
 -- Triggers `save_state`
