@@ -10,6 +10,8 @@ include "header.php";
 
 //unset($_SESSION["world"]);
 
+$_SESSION["log"]="";
+
 $forms = array();
 $hasTable = false;
 $hasLog = false;

@@ -10,6 +10,29 @@
 		} while ($mysqli->more_results() && $mysqli->next_result());        
 	}
 
+	function fetchSaveID($username,$savename){
+		$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+	
+		//consumeResults();	
+		$call = "SELECT sID FROM player_state WHERE username = '" . 
+		mysqli_real_escape_string($conn,$username) . "' AND saveName = '" .
+		mysqli_real_escape_string($conn,$savename) . "' ; "; 
+		//$_SESSION["check"] = $call;
+		$table = mysqli_query($conn, $call);//, MYSQLI_USE_RESULT);
+				
+		$res = NULL;
+		if($table){
+			$row = mysqli_fetch_row($table);
+			//$_SESSION["check"] = $row[0] . "---";
+			if($row){
+				$res = $row[0] ;
+			}
+		}
+		mysqli_close($conn);
+		return $res;
+		
+	}	
+
 	
 		class AutoEntry {
 
@@ -630,12 +653,12 @@
 
 			function appendLog($aText){
 
-				if(!isset($_SESSION[$this->pageName . "log"]) && 
-					$_SESSION[$this->pageName . "log"] !== NULL){
-					$_SESSION[$this->pageName . "log"] .= $aText;
+				if(!isset($_SESSION["log"]) && 
+					$_SESSION["log"] !== NULL){
+					$_SESSION["log"] = $aText;
 				}
 				else{
-					$_SESSION[$this->pageName . "log"] = $aText;
+					$_SESSION["log"] .= $aText;
 				}
 			}
 
@@ -692,11 +715,19 @@
 						"";
 
 				if(isset($_SESSION["username"])){
-					$res .= " - As " . $_SESSION["username"];
+					$res .= " - AS " . $_SESSION["username"];
 				
 					if(isset($_SESSION["world"])){
-						$res .= " - Editing '" .  
+						$res .= " - EDITING '" .  
 							$this->fetchWorldName($_SESSION["world"]) . "'";
+					}
+					if(isset($_SESSION["SAVE_WORLD"])){
+						$res .= " - PLAYING '" .  
+							$this->fetchWorldName($_SESSION["SAVE_WORLD"]) . "'";
+					}
+					if(isset($_SESSION["SAVE_NAME"])){
+						$res .= " - ON SAVE '" .  
+							$_SESSION["SAVE_NAME"] . "'";
 					}
 				}
 				$res .= "</header>";
@@ -791,18 +822,23 @@
 				$res .= "</div>";
 				
 				if($formResult !== NULL){
-					if($this->hasLog){
-						$logRow = mysqli_fetch_row($formResult);
-						$logText = $logRow[1];
-						$this->appendLog($logText);
-						$res .= "<div class='right'>";
-						$res .= $_SESSION[$this->pageName . "log"];
-						$res .= "</div>";
-					}
 					if($this->hasTable){
 						$res .= $this->generateTable($formResult);
 					}
 				}
+				
+				if($this->hasLog){
+					$logRow = mysqli_fetch_row($formResult);
+					$logText = $logRow[1];
+					$this->appendLog($logText);
+					$res .= "<div class='right'>";
+					$res .= "<div class='loghead'> LOG </div>";
+					$res .= "<div class='logbody'>";
+					$res .= $_SESSION["log"];
+					$res .= "</div>";
+					$res .= "</div>";
+				}
+
 				if($this->hasLog){
 					$res .= "</div>";
 				}

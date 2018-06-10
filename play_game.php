@@ -6,23 +6,30 @@
 
 	//header_remove();
 	
-	include "home_pages.php";
+	include "play_pages.php";
 	include "connectvars.php";
 	include "header.php";
 
-
+	if(isset($_SESSION["SAVE_NAME"]) && isset($_SESSION["username"])){
+		$_SESSION["save"] = fetchSaveID($_SESSION["username"],$_SESSION["SAVE_NAME"]);
+		//echo $_SESSION["SAVE_NAME"];
+		//echo "->" . $_SESSION["save"] . "<-";
+	}
+	
 			
 	$pickup = new AutoForm(
 		"PICK UP","pickup",array(
 		new AutoEntry("item","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 	
 	$drop = new AutoForm(
-		"DROP","drop",array(
+		"DROP","dropItem",array(
 		new AutoEntry("item","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 
@@ -39,9 +46,17 @@
 		new AutoEntry("save","number","autoget","",true)
 		),false
 	);
-		
 
-	$forms = array(	$pickup, $drop, $lookat, $govia	);
+	$load = new AutoForm(
+		"LOAD","loadSave",array(
+		new AutoEntry("saveName","text","autoset","",true),
+		new AutoEntry("username","text","autoget","",true)
+		),false
+	);
+
+	
+
+	$forms = array(	$pickup, $drop, $lookat, $govia, $load );
 	$aGets = array(array("username","You need to be logged in to play a game"));
 	$hasTable = false;
 	$hasLog = true;

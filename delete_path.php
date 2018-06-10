@@ -4,21 +4,16 @@
 	session_start();
 
 	
-	include "edit_item_pages.php";
+	include "edit_path_pages.php";
 	include "connectvars.php";
 	include "header.php";
 
 	$entries = array(
 		new AutoEntry("NAME","text","regular","",true),
-		new AutoEntry("LOCATION","text","regular","",true),
-		new AutoEntry("DESCRIPTION","textarea","regular","",true),
-		new AutoEntry("REQUIREMENT","text","regular","",false),
-		new AutoEntry("SUCCESS_TEXT","textarea","regular","",false),
-		new AutoEntry("FAILURE_TEXT","textarea","regular","",false),
 		new AutoEntry("world","number","autoget","",true)
 	);
 	$forms = array(
-		new AutoForm("Edit Item","editItem",$entries,false)
+		new AutoForm("Delete Path","deletePath",$entries,false)
 	);
 	$autoGets = array(
 		array("username","Error: You need to be signed in to select a world to edit."),
@@ -27,7 +22,7 @@
 	$hasTable = false;
 	$hasLog = false;
 	
-	$page = new AutoPage("Quest Database","Add Item",$forms,$content,$autoGets,$hasTable,$hasLog);
+	$page = new AutoPage("Quest Database","Delete Path",$forms,$content,$autoGets,$hasTable,$hasLog);
 	
 	$page->generatePage();
 ?>
