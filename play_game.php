@@ -15,7 +15,7 @@
 	$_SESSION["world"] = 21;	
 			
 	$pickup = new AutoForm(
-		"PICK UP","pickup",array(
+		"PICK UP","pickUp",array(
 		new AutoEntry("item","text","regular","",true),
 		new AutoEntry("save","number","autoget","",true),
                 new AutoEntry("world","number","autoget","",true)
