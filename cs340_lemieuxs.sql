@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 10, 2018 at 12:46 PM
+-- Generation Time: Jun 10, 2018 at 01:38 PM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -388,7 +388,7 @@ BEGIN
 	/* Check if item exists in current room */
     IF EXISTS (SELECT 1
     FROM item_location I1
-    WHERE I1.wID = worldID AND I1.itemName = thing AND I1.placeName = curr_location) THEN
+    WHERE I1.wID = worldID AND I1.itemName = thing AND I1.placeName = curr_location AND I1.sID = save) THEN
     	/* print out item name, description, requirement */
         SET description = (SELECT I2.description
                         FROM item I2
@@ -1135,6 +1135,7 @@ CREATE TABLE `path` (
 --
 
 INSERT INTO `path` (`pathName`, `description`, `fromPlace`, `toPlace`, `wID`) VALUES
+('backtostart', 'f', 'place1', 'start', 17),
 ('Dark Tunnel North', 'A long, dark hallway stretches northward, leading to a distant light.', 'Spooky Cave', 'Workshop', 15),
 ('Dark Tunnel South', 'The tunnel stretches downwards and southwards to the musty depths of a cave.', 'Workshop', 'Spooky Cave', 15),
 ('door to cabin', 'The door of the house.', 'field', 'house', 1),
@@ -1381,37 +1382,6 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `Student`
---
-
-CREATE TABLE `Student` (
-  `sID` int(11) NOT NULL,
-  `sName` varchar(255) NOT NULL,
-  `GPA` decimal(3,2) NOT NULL,
-  `sizeHS` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `Student`
---
-
-INSERT INTO `Student` (`sID`, `sName`, `GPA`, `sizeHS`) VALUES
-(123, 'Amy', '3.90', 1000),
-(234, 'Bob', '3.60', 1500),
-(345, 'Craig', '3.50', 500),
-(456, 'Doris', '3.90', 1000),
-(543, 'Craig', '3.40', 2000),
-(567, 'Edward', '2.90', 2000),
-(654, 'Amy', '3.90', 1000),
-(678, 'Fay', '3.80', 200),
-(765, 'Jay', '2.90', 1500),
-(789, 'Gary', '3.40', 800),
-(876, 'Irene', '3.90', 400),
-(987, 'Helen', '4.00', 800);
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `world`
 --
 
@@ -1582,12 +1552,6 @@ ALTER TABLE `player_state`
 ALTER TABLE `save_state`
   ADD PRIMARY KEY (`sID`),
   ADD KEY `wID` (`wID`);
-
---
--- Indexes for table `Student`
---
-ALTER TABLE `Student`
-  ADD PRIMARY KEY (`sID`);
 
 --
 -- Indexes for table `world`
