@@ -876,6 +876,7 @@
 							$theForm->doAutoSets();
 							$this->etch($this->generateError());
 							$this->etch($this->generateTable($formResult));
+							mysqli_free_result(formResult); //?
 						}
 						else{
 							$this->etch($this->generateError());
