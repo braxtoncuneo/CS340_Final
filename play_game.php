@@ -37,7 +37,8 @@
 	$lookat = new AutoForm(
 		"LOOK AT","lookAt",array(
 		new AutoEntry("thing","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
 	);
 
@@ -72,7 +73,8 @@
 
 	
 
-	$forms = array( $pickup, $drop, $lookat, $govia, $load/*, $currLocation, $inventory*/ );
+	$forms = array( $pickup, $drop, $lookat, $govia, $load );//, $currLocation, $inventory );
+
 	
 	$aGets = array(array("username","You need to be logged in to play a game"));
 	$hasTable = false;
