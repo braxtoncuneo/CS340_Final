@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 07, 2018 at 03:54 PM
+-- Generation Time: Jun 10, 2018 at 11:18 AM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -26,7 +26,6 @@ DELIMITER $$
 --
 -- Procedures
 --
-DROP PROCEDURE IF EXISTS `addItem`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `addItem` (IN `world` INT, IN `name` VARCHAR(255), IN `descText` TEXT, IN `location` VARCHAR(255))  MODIFIES SQL DATA
 BEGIN
 
@@ -42,25 +41,68 @@ VALUES (world,location,name,state);
 
 END$$
 
-DROP PROCEDURE IF EXISTS `deleteItem`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deleteItem` (IN `iName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
+
+IF NOT EXISTS (
+    SELECT pathName
+    FROM path
+    WHERE wID = worldNo AND pathName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered item does not exist in this world.';
+ELSE
 
 DELETE FROM item
 WHERE itemName = iName AND wID = worldNo;
 
+END IF;
+
 END$$
 
-DROP PROCEDURE IF EXISTS `deletePlace`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deletePath` (IN `pName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+IF NOT EXISTS (
+    SELECT pathName
+    FROM path
+    WHERE wID = worldNo AND pathName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered path does not exist in this world.';
+ELSE
+
+DELETE FROM path
+WHERE pathName = pName AND wID = worldNo;
+
+END IF;
+
+
+
+END$$
+
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deletePlace` (IN `pName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
+
+IF NOT EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = iLocation
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered place does not exist in this world.';
+ELSE
 
 DELETE FROM place
 WHERE placeName = pName AND wID = worldNo;
 
+END IF;
+
 END$$
 
-DROP PROCEDURE IF EXISTS `deleteWorld`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `deleteWorld` (IN `confirm` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
 
@@ -75,23 +117,176 @@ WHERE wID = worldNo;
 
 END$$
 
-DROP PROCEDURE IF EXISTS `dropItem`$$
-CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `dropItem` (IN `save` INT, IN `itemN` VARCHAR(255), IN `worldID` INT)  MODIFIES SQL DATA
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `dropItem` (IN `thing` VARCHAR(255), IN `save` INT, IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+DECLARE result TEXT;
+DECLARE requirement VARCHAR(255);
+
+SET result = "<br>";
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+IF EXISTS (
+	SELECT item.itemName
+    FROM item
+    INNER JOIN item_location ON item.wID = item_location.wID AND item.itemName = item_location.itemName
+    WHERE item.itemName = thing AND item.wID = worldNo AND item_location.sID = save AND item_location.placeName = 'inventory'
+)
+THEN
+
+SET result = CONCAT(result,'You remove the ', thing, ' from your inventory');
+
 UPDATE item_location
 SET placeName = (
-	SELECT placeName
-    FROM save_state
-    WHERE save_state = save
-)
-WHERE sID = save AND wID = worldID$$
+    	SELECT placeName
+        FROM save_state
+        WHERE sID = save
+    )
+WHERE itemName = thing AND sID = save;
 
-DROP PROCEDURE IF EXISTS `listPlayers`$$
+ELSE
+
+SET result = CONCAT(result,'There is no ', thing, ' in your inventory');
+
+END IF;
+
+
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
+END$$
+
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `editItem` (IN `iName` VARCHAR(255), IN `iLocation` VARCHAR(255), IN `iDesc` TEXT, IN `iReq` VARCHAR(255), IN `sText` TEXT, IN `fText` TEXT, IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+
+IF NOT EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo AND itemName = iName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'The current world does not have any item with the name entered.';
+END IF;
+
+
+IF NOT EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = iLocation
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered location does not exist in this world.';
+END IF;
+
+
+UPDATE item
+SET description = iDesc
+WHERE itemName = iName AND wID = worldNo;
+
+UPDATE item_location
+SET placeName = iLocation
+WHERE wID = worldNo AND itemName = iName AND
+    sID = (
+    SELECT sID
+    FROM default_state
+    WHERE wID = worldNo
+    )
+;
+
+IF NOT EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo AND itemName = iReq
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered required item does not exist in this world.';
+END IF;
+
+
+DELETE FROM item_req
+WHERE wID = worldNo AND itemName = iName;
+
+
+IF iReq != ""
+THEN
+INSERT INTO item_req (itemName, reqName, wID, success_text, failure_text)
+VALUES (iName,iReq,worldNo,sText,fText);
+END IF;
+
+END$$
+
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `editPath` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `fPlace` VARCHAR(255), IN `tPlace` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+UPDATE path
+SET description = descText, fromPlace = fPlace, toPlace = tPlace
+WHERE wID = worldNo AND pathName = pName;
+
+END$$
+
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `editPlace` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `worldNo` INT)  NO SQL
+BEGIN
+
+IF NOT EXISTS (
+ 	SELECT * FROM place WHERE placeName = pName   
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'No place in the current world has the name entered.';
+ELSE
+
+UPDATE place
+SET place.description = descText
+WHERE place.placeName = pName AND place.wID = worldNo;
+
+END IF;
+
+
+
+
+END$$
+
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `listPlayers` ()  READS SQL DATA
 BEGIN
 SELECT * FROM player;
 END$$
 
-DROP PROCEDURE IF EXISTS `makeItem`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `loadGame` (IN `sName` VARCHAR(255), IN `uName` VARCHAR(255))  MODIFIES SQL DATA
+BEGIN
+
+DECLARE result TEXT;
+
+SET result = "<br>";
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+IF EXISTS (
+	SELECT sID
+    FROM player_state
+    WHERE username = uName AND saveName = sName
+)
+THEN
+SET result = CONCAT("<br>-- LOADED SAVE STATE '",sName,"' --");
+ELSE
+SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered save state does not exist.';
+END IF;
+
+
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
+
+
+END$$
+
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makeItem` (IN `iName` VARCHAR(255), IN `iLocation` VARCHAR(255), IN `iDesc` TEXT, IN `iReq` VARCHAR(255), IN `sText` TEXT, IN `fText` TEXT, IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
 
@@ -106,6 +301,16 @@ THEN
     	SET MESSAGE_TEXT = 'Entered location does not exist in this world.';
 END IF;
 
+IF EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo AND itemName = iName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered item already exists in this world.';
+END IF;
+
 
 INSERT INTO item (itemName, description, wID)
 VALUES (iName,iDesc,worldNo);
@@ -118,7 +323,17 @@ VALUES (worldNo, iLocation, iName, (
     )
 );
 
-IF iReq = NULL
+IF NOT EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered required item does not exist in this world.';
+END IF;
+
+IF iReq != ""
 THEN
 INSERT INTO item_req (itemName, reqName, wID, success_text, failure_text)
 VALUES (iName,iReq,worldNo,sText,fText);
@@ -126,7 +341,6 @@ END IF;
 
 END$$
 
-DROP PROCEDURE IF EXISTS `makeMessage`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makeMessage` (IN `sender` TEXT, IN `reciever` TEXT, IN `body` TEXT, IN `secretNumber` INT)  MODIFIES SQL DATA
 BEGIN
 
@@ -142,16 +356,42 @@ INSERT INTO ret (logText) VALUES (CONCAT(sender," tells ",reciever," : ",body));
 SELECT * FROM ret;
 END$$
 
-DROP PROCEDURE IF EXISTS `makePlace`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makePath` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `fPlace` VARCHAR(255), IN `tPlace` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+IF EXISTS (
+    SELECT pathName
+    FROM path
+    WHERE wID = worldNo AND pathName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered path already exists in this world.';
+END IF;
+
+INSERT INTO path (pathName,description,fromPlace,toPlace,wID)
+VALUES (pName,descText,fPlace,tPlace,worldNo);
+
+END$$
+
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makePlace` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `worldNo` INT)  NO SQL
 BEGIN
+
+IF EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered place already exists in this world.';
+END IF;
 
 INSERT INTO place (placeName, description, wID)
 VALUES (pName,descText,worldNo);
 
 END$$
 
-DROP PROCEDURE IF EXISTS `makeWorld`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `makeWorld` (IN `wName` VARCHAR(255), IN `uName` VARCHAR(255))  MODIFIES SQL DATA
 BEGIN
 
@@ -160,7 +400,104 @@ VALUES (wName,true,uName);
 
 END$$
 
-DROP PROCEDURE IF EXISTS `selectWorld`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `newGame` (IN `saveName` VARCHAR(255), IN `worldNo` INT, IN `uName` VARCHAR(255))  MODIFIES SQL DATA
+BEGIN
+
+DECLARE pName VARCHAR(255);
+
+SELECT placeName
+INTO pName
+FROM save_state
+WHERE wID = worldNo AND sID IN (SELECT sID FROM default_state);
+
+INSERT INTO save_state ( wID, placeName )
+VALUES ( worldNo, pName );
+
+INSERT INTO player_state ( sID, username, saveName )
+VALUES ( LAST_INSERT_ID(), uName, saveName );
+
+END$$
+
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `pickUp` (IN `thing` VARCHAR(255), IN `save` INT, IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+DECLARE result TEXT;
+DECLARE requirement VARCHAR(255);
+
+SET result = "<br>";
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+IF EXISTS (
+	SELECT item.itemName
+    FROM item
+    INNER JOIN item_location ON item.wID = item_location.wID AND item.itemName = item_location.itemName
+    WHERE item.itemName = thing AND item.wID = worldNo AND item_location.sID = save AND item_location.placeName =  (
+    	SELECT placeName
+        FROM save_state
+        WHERE sID = save
+    )
+)
+THEN
+
+
+IF EXISTS (
+	SELECT IR.reqName
+    FROM item_req AS IR
+    INNER JOIN item_location AS IL ON IR.reqName = IL.itemName AND IR.wID = IL.wID
+    WHERE IL.itemName = thing AND IL.sID = save
+)
+THEN
+	SET requirement = (
+	SELECT IR.reqName
+    FROM item_req AS IR
+    INNER JOIN item_location AS IL ON IR.reqName = IL.itemName AND IR.wID = IL.wID
+    WHERE IL.itemName = thing AND IL.sID = save);
+
+IF EXISTS (
+    SELECT itemName
+    FROM item_location
+    WHERE sID = save AND itemName = requirement AND placeName = 'inventory')
+THEN
+SET result = CONCAT(result,(
+	SELECT success_text FROM item_req WHERE wID = worldNo AND itemName = thing)
+);
+ELSE
+SET result = CONCAT(result,(
+	SELECT failure_text FROM item_req WHERE wID = worldNo AND itemName = thing)
+);
+END IF;
+
+END IF;
+
+UPDATE item_location
+SET placeName = 'inventory'
+WHERE sID = save AND itemName = thing;
+
+SET result = CONCAT(result,"You pick up the ",thing," and transfer it to your inventory.");
+
+ELSE
+
+IF EXISTS (
+	SELECT itemName
+    FROM item_location
+    WHERE sID = save AND itemName = thing AND placeName = 'inventory'
+)
+THEN
+SET result = CONCAT(result,'The ',thing,' is already in your inventory');
+ELSE
+SET result = CONCAT(result,"If it exists, the ",thing," is not here.");
+END IF;
+
+END IF;
+
+
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
+END$$
+
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `selectWorld` (IN `worldNo` INT, IN `uName` VARCHAR(255))  MODIFIES SQL DATA
 BEGIN
 
@@ -180,8 +517,7 @@ END IF;
 
 END$$
 
-DROP PROCEDURE IF EXISTS `setupStateForPlayer`$$
-CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `setupStateForPlayer` (IN `user` VARCHAR(255), IN `worldID` INT)  MODIFIES SQL DATA
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `setupStateForPlayer` (IN `sName` VARCHAR(255), IN `user` VARCHAR(255), IN `worldID` INT)  MODIFIES SQL DATA
 BEGIN
 
 DECLARE done INT default 0;
@@ -212,8 +548,8 @@ INSERT INTO save_state ( wID, placeName )
 SET theState = LAST_INSERT_ID();
 
 
-INSERT INTO player_state( sID, username )
-	VALUES (theState,`user`);
+INSERT INTO player_state( sID, username, saveName)
+	VALUES (theState,`user`,sName);
 
 OPEN itemCurse;
 REPEAT
@@ -233,7 +569,6 @@ CLOSE itemCurse;
 
 END$$
 
-DROP PROCEDURE IF EXISTS `signIn`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `signIn` (IN `uName` VARCHAR(40), IN `passHash` VARCHAR(40))  MODIFIES SQL DATA
 BEGIN
 
@@ -253,14 +588,12 @@ END IF;
 
 END$$
 
-DROP PROCEDURE IF EXISTS `signupPlayer`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `signupPlayer` (IN `uName` VARCHAR(40), IN `passHash` VARCHAR(40), IN `saltVal` VARCHAR(8))  MODIFIES SQL DATA
 BEGIN
 INSERT INTO player (username, password_hash, salt)
 VALUES (uName,passHash,saltVal);
 END$$
 
-DROP PROCEDURE IF EXISTS `viewItems`$$
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewItems` (IN `worldNo` INT(255))  NO SQL
 BEGIN
 
@@ -276,17 +609,38 @@ WHERE I.wID = worldNo AND IL.sID = (
 
 END$$
 
-DROP PROCEDURE IF EXISTS `viewPlaces`$$
-CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewPlaces` (IN `worldNo` INT)  MODIFIES SQL DATA
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewPaths` (IN `worldNo` INT)  READS SQL DATA
 BEGIN
 
-SELECT P.placeName AS NAME, P.description AS DESCRIPTION
-FROM place AS P
+
+SELECT P.pathName AS NAME, P.description AS DESCRIPTION, P.fromPlace AS ORIGIN, P.toPlace AS DESTINATION
+FROM path AS P
 WHERE P.wID = worldNo;
 
 END$$
 
-DROP PROCEDURE IF EXISTS `viewWorlds`$$
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewPlaces` (IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+
+SELECT placeName AS NAME, description AS DESCRIPTION
+FROM place
+WHERE wID = worldNo;
+
+END$$
+
+CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewSaves` (IN `uName` VARCHAR(255))  MODIFIES SQL DATA
+BEGIN
+
+SELECT worldName as WORLD, saveName AS NAME
+FROM player_state
+INNER JOIN save_state ON player_state.sID = save_state.sID
+INNER JOIN world ON save_state.wID = world.wID
+WHERE username = uName
+ORDER BY worldName ASC;
+
+END$$
+
 CREATE DEFINER=`cs340_cuneob`@`%` PROCEDURE `viewWorlds` (IN `uName` VARCHAR(255))  MODIFIES SQL DATA
 BEGIN
 
@@ -306,7 +660,6 @@ DELIMITER ;
 -- Table structure for table `default_state`
 --
 
-DROP TABLE IF EXISTS `default_state`;
 CREATE TABLE `default_state` (
   `sID` int(11) NOT NULL,
   `wID` int(11) NOT NULL
@@ -329,7 +682,8 @@ INSERT INTO `default_state` (`sID`, `wID`) VALUES
 (16, 11),
 (17, 12),
 (18, 13),
-(19, 14);
+(19, 14),
+(21, 15);
 
 -- --------------------------------------------------------
 
@@ -337,7 +691,6 @@ INSERT INTO `default_state` (`sID`, `wID`) VALUES
 -- Table structure for table `item`
 --
 
-DROP TABLE IF EXISTS `item`;
 CREATE TABLE `item` (
   `itemName` varchar(255) NOT NULL,
   `description` text NOT NULL,
@@ -351,6 +704,7 @@ CREATE TABLE `item` (
 INSERT INTO `item` (`itemName`, `description`, `wID`) VALUES
 ('bear trap', 'Yet another sign you should leave this cave.', 1),
 ('boat', 'The boat lies broken, marooned on the sand.', 1),
+('Iron Key', 'It\'s pretty heavy.', 15),
 ('key', 'A worn key.', 1),
 ('ladder', 'A metal step ladder. Old, but sturdy.', 1),
 ('mushroom', 'It is quite large and probably poisonous.', 1),
@@ -359,18 +713,22 @@ INSERT INTO `item` (`itemName`, `description`, `wID`) VALUES
 ('rock', 'It is a rock.', 4),
 ('rope', 'A spool of rope.', 1),
 ('skeleton', 'The skull has a large bite mark on it.', 1),
+('Skull Grabber', 'Useful for grabbing skulls.', 13),
+('Skull Magnet', 'A', 13),
 ('Spooky Skull', 'It chatters softly.', 13),
 ('swimming trunks', 'A nice swimming suit.', 1),
 ('tea', 'You refuse to leave the room before drinking it.', 1),
 ('telescope', 'The telescope looks out onto the horizon.', 3),
+('Test Item', 'Test', 13),
 ('test object', 'Replace with actual item later.', 2),
 ('Test Object', 'This is a test', 14),
+('testItem', 'This is a test', 13),
+('Testy', 'A bit testy', 13),
 ('Toy Car', 'It is so old, most of the paint has peeled off.', 13);
 
 --
 -- Triggers `item`
 --
-DROP TRIGGER IF EXISTS `delete_item`;
 DELIMITER $$
 CREATE TRIGGER `delete_item` BEFORE DELETE ON `item` FOR EACH ROW BEGIN
 DELETE FROM save_state
@@ -392,7 +750,6 @@ DELIMITER ;
 -- Table structure for table `item_location`
 --
 
-DROP TABLE IF EXISTS `item_location`;
 CREATE TABLE `item_location` (
   `wID` int(11) NOT NULL,
   `placeName` varchar(255) NOT NULL,
@@ -416,7 +773,6 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'beach', 'rope', 6),
 (1, 'beach', 'rope', 8),
 (1, 'beach', 'rope', 10),
-(13, 'Black Lodge Entranceway', 'Spooky Skull', 18),
 (1, 'cave', 'bear trap', 1),
 (1, 'cave', 'bear trap', 6),
 (1, 'cave', 'bear trap', 8),
@@ -445,11 +801,20 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'house', 'tea', 6),
 (1, 'house', 'tea', 8),
 (1, 'house', 'tea', 10),
+(15, 'inventory', 'Iron Key', 23),
 (1, 'lake', 'paddle', 1),
 (1, 'lake', 'paddle', 6),
 (1, 'lake', 'paddle', 8),
 (1, 'lake', 'paddle', 10),
-(3, 'second floor', 'telescope', 3);
+(13, 'Red Room', 'Skull Grabber', 18),
+(13, 'Red Room', 'Skull Magnet', 18),
+(13, 'Red Room', 'Spooky Skull', 18),
+(13, 'Red Room', 'Test Item', 18),
+(13, 'Red Room', 'Testy', 18),
+(3, 'second floor', 'telescope', 3),
+(15, 'start', 'Iron Key', 21),
+(15, 'start', 'Iron Key', 24),
+(13, 'start', 'testItem', 18);
 
 -- --------------------------------------------------------
 
@@ -457,7 +822,6 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 -- Table structure for table `item_req`
 --
 
-DROP TABLE IF EXISTS `item_req`;
 CREATE TABLE `item_req` (
   `itemName` varchar(255) NOT NULL,
   `reqName` varchar(255) NOT NULL,
@@ -475,7 +839,11 @@ INSERT INTO `item_req` (`itemName`, `reqName`, `wID`, `success_text`, `failure_t
 ('key', 'paddle', 1, '', ''),
 ('ladder', 'paddle', 1, '', ''),
 ('mushroom', 'bear trap', 1, '', ''),
-('tea', 'mushroom', 1, '', '');
+('Skull Magnet', 'Spooky Skull', 13, '', ''),
+('Spooky Skull', 'Skull Grabber', 13, 'You pick up the Spooky Skull using the Skull Grabber.', 'You can\'t quite reach it. If only you had some sort of Skull Grabber...'),
+('tea', 'mushroom', 1, '', ''),
+('Test Item', 'Spooky Skull', 13, '', ''),
+('Testy', 'Spooky Skull', 13, 'Succ', 'Fail');
 
 -- --------------------------------------------------------
 
@@ -483,7 +851,6 @@ INSERT INTO `item_req` (`itemName`, `reqName`, `wID`, `success_text`, `failure_t
 -- Table structure for table `message`
 --
 
-DROP TABLE IF EXISTS `message`;
 CREATE TABLE `message` (
   `id` int(11) NOT NULL,
   `sender` text,
@@ -561,43 +928,9 @@ INSERT INTO `message` (`id`, `sender`, `reciever`, `body`, `secretNumber`) VALUE
 -- --------------------------------------------------------
 
 --
--- Table structure for table `MinimumGPA`
---
-
-DROP TABLE IF EXISTS `MinimumGPA`;
-CREATE TABLE `MinimumGPA` (
-  `cName` varchar(255) NOT NULL,
-  `major` varchar(255) NOT NULL,
-  `minGPA` decimal(3,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `MinimumGPA`
---
-
-INSERT INTO `MinimumGPA` (`cName`, `major`, `minGPA`) VALUES
-('Cornell', 'bioengineering', '3.80'),
-('Cornell', 'CS', '3.40'),
-('Cornell', 'EE', '3.60'),
-('Cornell', 'history', '3.60'),
-('Cornell', 'psychology', '2.80'),
-('MIT', 'bioengineering', '3.50'),
-('MIT', 'biology', '3.50'),
-('MIT', 'CS', '3.90'),
-('MIT', 'marine biology', '3.50'),
-('OSU', 'CS', '3.75'),
-('OSU', 'EE', '3.50'),
-('OSU', 'history', '2.80'),
-('U of O', 'biology', '3.75'),
-('U of O', 'CS', '3.60');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `path`
 --
 
-DROP TABLE IF EXISTS `path`;
 CREATE TABLE `path` (
   `pathName` varchar(255) NOT NULL,
   `description` text NOT NULL,
@@ -611,11 +944,15 @@ CREATE TABLE `path` (
 --
 
 INSERT INTO `path` (`pathName`, `description`, `fromPlace`, `toPlace`, `wID`) VALUES
+('Dark Tunnel North', 'A long, dark hallway stretches northward, leading to a distant light.', 'Spooky Cave', 'Workshop', 15),
+('Dark Tunnel South', 'The tunnel stretches downwards and southwards to the musty depths of a cave.', 'Workshop', 'Spooky Cave', 15),
 ('door to cabin', 'The door of the house.', 'field', 'house', 1),
 ('door to field', 'The door of the house.', 'house', 'field', 1),
 ('downhill path', 'A dirt road leading downhill', 'field', 'beach', 1),
 ('hole down', 'A hole in the ground', 'field', 'cave', 1),
 ('hole up', 'A hole in the cave ceiling', 'cave', 'field', 1),
+('Northward Iron Door', 'It looks pretty heavy.', 'start', 'Spooky Cave', 15),
+('Northward Ornate Door', 'Its fancy AND northward.', 'Red Room', 'Dining Room', 13),
 ('shore', 'The water laps onto the beach.', 'beach', 'lake', 1),
 ('shore up', 'The water laps onto the beach.', 'lake', 'beach', 1),
 ('stairs down', 'Serviceable stairs', 'second floor', 'first floor', 3),
@@ -626,7 +963,6 @@ INSERT INTO `path` (`pathName`, `description`, `fromPlace`, `toPlace`, `wID`) VA
 --
 -- Triggers `path`
 --
-DROP TRIGGER IF EXISTS `delete_path`;
 DELIMITER $$
 CREATE TRIGGER `delete_path` BEFORE DELETE ON `path` FOR EACH ROW BEGIN
 DELETE FROM save_state
@@ -643,7 +979,6 @@ DELIMITER ;
 -- Table structure for table `path_req`
 --
 
-DROP TABLE IF EXISTS `path_req`;
 CREATE TABLE `path_req` (
   `pathName` varchar(255) NOT NULL,
   `reqName` varchar(255) NOT NULL,
@@ -667,7 +1002,6 @@ INSERT INTO `path_req` (`pathName`, `reqName`, `wID`) VALUES
 -- Table structure for table `place`
 --
 
-DROP TABLE IF EXISTS `place`;
 CREATE TABLE `place` (
   `placeName` varchar(255) NOT NULL,
   `description` text NOT NULL,
@@ -684,12 +1018,15 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('beach', 'It is sandy here, and there is water.', 1),
 ('Black Lodge Entranceway', 'The forboding decor in the entrance hall goes to show visitors they are not in for a fun time.', 13),
 ('cave', 'It is dark. you are likely to be eaten by a grue.', 1),
+('Dining Room', 'There\'s a long table here.', 13),
 ('field', 'The meadow is sunny and pleasant.', 1),
 ('first floor', 'You can see some stairs and a secretary desk.', 3),
 ('house', 'It is a small but serviceable cabin.', 1),
+('inventory', '', 15),
 ('lake', 'The water is deep and murky.', 1),
-('Red Room', 'It is spooky and from Twin Peaks.', 13),
+('Red Room', 'Hey look, a new description!', 13),
 ('second floor', 'Looking out the window, you can see your house from here.', 3),
+('Spooky Cave', 'It\'s pretty spooky.', 15),
 ('start', '', 1),
 ('start', '', 2),
 ('start', '', 3),
@@ -701,12 +1038,14 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('start', '', 10),
 ('start', '', 11),
 ('start', '', 12),
-('start', '', 14);
+('start', 'it\'s a starting place', 13),
+('start', '', 14),
+('start', '', 15),
+('Workshop', 'A simple, underground workshop.', 15);
 
 --
 -- Triggers `place`
 --
-DROP TRIGGER IF EXISTS `delete_place`;
 DELIMITER $$
 CREATE TRIGGER `delete_place` BEFORE DELETE ON `place` FOR EACH ROW BEGIN
 DELETE FROM save_state
@@ -727,7 +1066,6 @@ DELIMITER ;
 -- Table structure for table `player`
 --
 
-DROP TABLE IF EXISTS `player`;
 CREATE TABLE `player` (
   `username` varchar(255) NOT NULL,
   `password_hash` varchar(32) DEFAULT NULL,
@@ -753,7 +1091,6 @@ INSERT INTO `player` (`username`, `password_hash`, `salt`) VALUES
 --
 -- Triggers `player`
 --
-DROP TRIGGER IF EXISTS `delete_player`;
 DELIMITER $$
 CREATE TRIGGER `delete_player` BEFORE DELETE ON `player` FOR EACH ROW BEGIN
 DELETE FROM world WHERE owner = OLD.username;
@@ -771,23 +1108,21 @@ DELIMITER ;
 -- Table structure for table `player_state`
 --
 
-DROP TABLE IF EXISTS `player_state`;
 CREATE TABLE `player_state` (
   `sID` int(11) NOT NULL,
-  `username` varchar(255) NOT NULL
+  `username` varchar(255) NOT NULL,
+  `saveName` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `player_state`
 --
 
-INSERT INTO `player_state` (`sID`, `username`) VALUES
-(6, 'alice'),
-(7, 'alice'),
-(8, 'bob'),
-(9, 'bob'),
-(10, 'eve'),
-(11, 'eve');
+INSERT INTO `player_state` (`sID`, `username`, `saveName`) VALUES
+(24, 'Faythe', 'Demo'),
+(20, 'Faythe', 'Game1'),
+(22, 'Faythe', 'Jorg1'),
+(23, 'Faythe', 'Jorg2');
 
 -- --------------------------------------------------------
 
@@ -795,7 +1130,6 @@ INSERT INTO `player_state` (`sID`, `username`) VALUES
 -- Table structure for table `save_state`
 --
 
-DROP TABLE IF EXISTS `save_state`;
 CREATE TABLE `save_state` (
   `sID` int(11) NOT NULL,
   `wID` int(11) NOT NULL,
@@ -825,12 +1159,16 @@ INSERT INTO `save_state` (`sID`, `wID`, `placeName`) VALUES
 (16, 11, 'start'),
 (17, 12, 'start'),
 (18, 13, 'start'),
-(19, 14, 'start');
+(19, 14, 'start'),
+(20, 13, 'start'),
+(21, 15, 'start'),
+(22, 15, 'start'),
+(23, 15, 'start'),
+(24, 15, 'start');
 
 --
 -- Triggers `save_state`
 --
-DROP TRIGGER IF EXISTS `delete_save_state`;
 DELIMITER $$
 CREATE TRIGGER `delete_save_state` BEFORE DELETE ON `save_state` FOR EACH ROW BEGIN
 DELETE FROM default_state WHERE sID = OLD.sID;
@@ -842,10 +1180,40 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `Student`
+--
+
+CREATE TABLE `Student` (
+  `sID` int(11) NOT NULL,
+  `sName` varchar(255) NOT NULL,
+  `GPA` decimal(3,2) NOT NULL,
+  `sizeHS` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Student`
+--
+
+INSERT INTO `Student` (`sID`, `sName`, `GPA`, `sizeHS`) VALUES
+(123, 'Amy', '3.90', 1000),
+(234, 'Bob', '3.60', 1500),
+(345, 'Craig', '3.50', 500),
+(456, 'Doris', '3.90', 1000),
+(543, 'Craig', '3.40', 2000),
+(567, 'Edward', '2.90', 2000),
+(654, 'Amy', '3.90', 1000),
+(678, 'Fay', '3.80', 200),
+(765, 'Jay', '2.90', 1500),
+(789, 'Gary', '3.40', 800),
+(876, 'Irene', '3.90', 400),
+(987, 'Helen', '4.00', 800);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `world`
 --
 
-DROP TABLE IF EXISTS `world`;
 CREATE TABLE `world` (
   `wID` int(11) NOT NULL,
   `worldName` varchar(255) NOT NULL,
@@ -870,12 +1238,12 @@ INSERT INTO `world` (`wID`, `worldName`, `private`, `owner`) VALUES
 (11, 'Y tho', 1, 'Heisenberg'),
 (12, 'Test World', 1, 'Grover'),
 (13, 'The Church', 1, 'Faythe'),
-(14, 'Test world', 1, 'Faythe');
+(14, 'Test world', 1, 'Faythe'),
+(15, 'Jorg', 1, 'Faythe');
 
 --
 -- Triggers `world`
 --
-DROP TRIGGER IF EXISTS `delete_world`;
 DELIMITER $$
 CREATE TRIGGER `delete_world` BEFORE DELETE ON `world` FOR EACH ROW BEGIN
 DELETE FROM save_state WHERE wID = OLD.wID;
@@ -885,9 +1253,11 @@ DELETE FROM item WHERE wID = OLD.wID;
 END
 $$
 DELIMITER ;
-DROP TRIGGER IF EXISTS `insert_world`;
 DELIMITER $$
 CREATE TRIGGER `insert_world` AFTER INSERT ON `world` FOR EACH ROW BEGIN
+
+INSERT INTO place ( placeName, description, wID)
+	VALUES ('inventory','',NEW.wID);
 
 INSERT INTO place ( placeName, description, wID )
 	VALUES ('start','',NEW.wID);
@@ -908,7 +1278,6 @@ DELIMITER ;
 -- Table structure for table `world_rating`
 --
 
-DROP TABLE IF EXISTS `world_rating`;
 CREATE TABLE `world_rating` (
   `username` varchar(255) NOT NULL,
   `wID` int(11) NOT NULL,
@@ -969,12 +1338,6 @@ ALTER TABLE `message`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `MinimumGPA`
---
-ALTER TABLE `MinimumGPA`
-  ADD PRIMARY KEY (`cName`,`major`);
-
---
 -- Indexes for table `path`
 --
 ALTER TABLE `path`
@@ -1009,7 +1372,7 @@ ALTER TABLE `player`
 --
 ALTER TABLE `player_state`
   ADD PRIMARY KEY (`sID`),
-  ADD KEY `username` (`username`);
+  ADD UNIQUE KEY `nameCopy` (`username`,`saveName`);
 
 --
 -- Indexes for table `save_state`
@@ -1017,6 +1380,12 @@ ALTER TABLE `player_state`
 ALTER TABLE `save_state`
   ADD PRIMARY KEY (`sID`),
   ADD KEY `wID` (`wID`);
+
+--
+-- Indexes for table `Student`
+--
+ALTER TABLE `Student`
+  ADD PRIMARY KEY (`sID`);
 
 --
 -- Indexes for table `world`
@@ -1046,13 +1415,13 @@ ALTER TABLE `message`
 -- AUTO_INCREMENT for table `save_state`
 --
 ALTER TABLE `save_state`
-  MODIFY `sID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `sID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `world`
 --
 ALTER TABLE `world`
-  MODIFY `wID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `wID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- Constraints for dumped tables
@@ -1087,12 +1456,6 @@ ALTER TABLE `item_req`
   ADD CONSTRAINT `item_req_ibfk_1` FOREIGN KEY (`itemName`,`wID`) REFERENCES `item` (`itemName`, `wID`),
   ADD CONSTRAINT `item_req_ibfk_2` FOREIGN KEY (`reqName`,`wID`) REFERENCES `item` (`itemName`, `wID`),
   ADD CONSTRAINT `item_req_ibfk_3` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
-
---
--- Constraints for table `MinimumGPA`
---
-ALTER TABLE `MinimumGPA`
-  ADD CONSTRAINT `MinimumGPA_ibfk_1` FOREIGN KEY (`cName`) REFERENCES `College` (`cName`);
 
 --
 -- Constraints for table `path`
