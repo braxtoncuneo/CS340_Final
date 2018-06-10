@@ -72,7 +72,7 @@
 
 	
 
-	$forms = array( $pickup, $drop, $lookat, $govia, $load, $currLocation, $inventory );
+	$forms = array( $pickup, $drop, $lookat, $govia, $load/*, $currLocation, $inventory*/ );
 	
 	$aGets = array(array("username","You need to be logged in to play a game"));
 	$hasTable = false;
