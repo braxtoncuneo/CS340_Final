@@ -10,19 +10,23 @@
 	include "connectvars.php";
 	include "header.php";
 
-
+	// change later
+	$_SESSION["save"] = 26;
+	$_SESSION["world"] = 21;	
 			
 	$pickup = new AutoForm(
-		"PICK UP","pickup",array(
+		"PICK UP","pickUp",array(
 		new AutoEntry("item","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+                new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 	
 	$drop = new AutoForm(
-		"DROP","drop",array(
+		"DROP","dropItem",array(
 		new AutoEntry("item","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+                new AutoEntry("save","number","autoget","",true),
+                new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 
@@ -36,14 +40,28 @@
 	$govia = new AutoForm(
 		"GO VIA","goVia",array(
 		new AutoEntry("path","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
 		),false
 	);
-		
+	
+	$inventory = new AutoForm(
+		"INVENTORY","showInventory",array(
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
+		),false
+	);
+	
+	$currLocation = new AutoForm(
+		"CURRENT ROOM","showLocation",array(
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
+		),false
+	);
 
-	$forms = array(	$pickup, $drop, $lookat, $govia	);
+	$forms = array( $pickup, $drop, $lookat, $govia, $currLocation, $inventory );
 	$aGets = array(array("username","You need to be logged in to play a game"));
-	$hasTable = false;
+	$hasTable = true;
 	$hasLog = true;
 	$page = new AutoPage("QUEST DATABASE","Play Game",$forms,$content,$aGets,$hasTable,$hasLog);
 	
