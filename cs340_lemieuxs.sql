@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 09, 2018 at 07:43 PM
+-- Generation Time: Jun 09, 2018 at 08:36 PM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -86,11 +86,9 @@ END$$
 
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `goVia` (IN `path` VARCHAR(255), IN `save` INT, IN `worldID` INT)  NO SQL
 BEGIN
-/* 
-Check item requirements?
-*/
 
 DECLARE curr_location VARCHAR(255);
+DECLARE req_item VARCHAR(255);
 SET curr_location = (SELECT placeName
 	FROM save_state S
 	WHERE S.sID = save
@@ -101,12 +99,38 @@ IF EXISTS (SELECT 1
     FROM path P1
     WHERE P1.wID = worldID AND P1.fromPlace = curr_location AND P1.pathName = path) THEN
 
-    UPDATE save_state
-    SET placeName = 
-    (SELECT P2.toPlace
-    FROM path P2
-    WHERE P2.wID = worldID AND P2.fromPlace = curr_location AND P2.pathName = path)
-    WHERE sID = save AND wID = worldID;
+/* Check item requirements */
+	IF EXISTS (SELECT 1
+    FROM path_req P3
+    WHERE P3.wID = worldID AND P3.pathName = path) THEN
+    
+        SET req_item = (SELECT P4.reqName
+        FROM path_req P4
+        WHERE P4.wID = worldID AND P4.pathName = path
+        );
+        
+        /* Check if player's inventory contains the required item */
+        IF EXISTS (SELECT 1
+        FROM item_location I1
+        WHERE I1.wID = worldID AND I1.sID = save AND I1.placeName = 'inventory' AND itemName = req_item) THEN
+        	/* Take the path */
+            UPDATE save_state
+            SET placeName = 
+            (SELECT P2.toPlace
+            FROM path P2
+            WHERE P2.wID = worldID AND P2.fromPlace = curr_location AND P2.pathName = path)
+            WHERE sID = save AND wID = worldID;
+        END IF;
+    
+    ELSE
+    	/* Take the path */
+        UPDATE save_state
+        SET placeName = 
+        (SELECT P2.toPlace
+        FROM path P2
+        WHERE P2.wID = worldID AND P2.fromPlace = curr_location AND P2.pathName = path)
+        WHERE sID = save AND wID = worldID;
+    END IF;
 END IF;
 
 END$$
@@ -495,12 +519,12 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'house', 'tea', 6),
 (1, 'house', 'tea', 8),
 (1, 'house', 'tea', 10),
+(21, 'inventory', 'item1', 26),
 (21, 'inventory', 'item2', 26),
 (1, 'lake', 'paddle', 1),
 (1, 'lake', 'paddle', 6),
 (1, 'lake', 'paddle', 8),
 (1, 'lake', 'paddle', 10),
-(21, 'place1', 'item1', 26),
 (3, 'second floor', 'telescope', 3);
 
 -- --------------------------------------------------------
@@ -634,10 +658,12 @@ INSERT INTO `path` (`pathName`, `description`, `fromPlace`, `toPlace`, `wID`) VA
 ('hole down', 'A hole in the ground', 'field', 'cave', 1),
 ('hole up', 'A hole in the cave ceiling', 'cave', 'field', 1),
 ('path1', 'goes to place1', 'start', 'place1', 21),
+('place2tostart', 'goes from place2 to start', 'place2', 'start', 21),
 ('shore', 'The water laps onto the beach.', 'beach', 'lake', 1),
 ('shore up', 'The water laps onto the beach.', 'lake', 'beach', 1),
 ('stairs down', 'Serviceable stairs', 'second floor', 'first floor', 3),
 ('stairs up', 'Serviceable stairs', 'first floor', 'second floor', 3),
+('start2place2', 'goes from start to place2', 'start', 'place2', 21),
 ('uphill path', 'A dirt road leading uphill', 'beach', 'field', 1),
 ('uphill pathway', 'A dirt road leading uphill', 'beach', 'field', 1);
 
@@ -671,6 +697,7 @@ CREATE TABLE `path_req` (
 --
 
 INSERT INTO `path_req` (`pathName`, `reqName`, `wID`) VALUES
+('start2place2', 'item1', 21),
 ('door to cabin', 'key', 1),
 ('hole up', 'ladder', 1),
 ('hole down', 'rope', 1),
@@ -706,6 +733,7 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('inventory', '', 21),
 ('lake', 'The water is deep and murky.', 1),
 ('place1', 'room after start', 21),
+('place2', 'another room', 21),
 ('Red Room', 'It is spooky and from Twin Peaks.', 13),
 ('second floor', 'Looking out the window, you can see your house from here.', 3),
 ('start', '', 0),
@@ -842,7 +870,7 @@ INSERT INTO `save_state` (`sID`, `wID`, `placeName`) VALUES
 (17, 12, 'start'),
 (18, 13, 'start'),
 (19, 14, 'start'),
-(26, 21, 'place1');
+(26, 21, 'place2');
 
 --
 -- Triggers `save_state`
