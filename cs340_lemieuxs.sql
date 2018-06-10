@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 09, 2018 at 09:15 PM
+-- Generation Time: Jun 10, 2018 at 12:46 PM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -44,16 +44,62 @@ END$$
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `deleteItem` (IN `iName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
 
+IF NOT EXISTS (
+    SELECT pathName
+    FROM path
+    WHERE wID = worldNo AND pathName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered item does not exist in this world.';
+ELSE
+
 DELETE FROM item
 WHERE itemName = iName AND wID = worldNo;
+
+END IF;
+
+END$$
+
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `deletePath` (IN `pName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+IF NOT EXISTS (
+    SELECT pathName
+    FROM path
+    WHERE wID = worldNo AND pathName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered path does not exist in this world.';
+ELSE
+
+DELETE FROM path
+WHERE pathName = pName AND wID = worldNo;
+
+END IF;
+
+
 
 END$$
 
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `deletePlace` (IN `pName` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
 
+IF NOT EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = iLocation
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered place does not exist in this world.';
+ELSE
+
 DELETE FROM place
 WHERE placeName = pName AND wID = worldNo;
+
+END IF;
 
 END$$
 
@@ -71,16 +117,138 @@ WHERE wID = worldNo;
 
 END$$
 
-CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `dropItem` (IN `itemN` VARCHAR(255), IN `save` INT, IN `worldID` INT)  MODIFIES SQL DATA
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `dropItem` (IN `thing` VARCHAR(255), IN `save` INT, IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
+
+DECLARE result TEXT;
+DECLARE requirement VARCHAR(255);
+
+SET result = "<br>";
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+IF EXISTS (
+	SELECT item.itemName
+    FROM item
+    INNER JOIN item_location ON item.wID = item_location.wID AND item.itemName = item_location.itemName
+    WHERE item.itemName = thing AND item.wID = worldNo AND item_location.sID = save AND item_location.placeName = 'inventory'
+)
+THEN
+
+SET result = CONCAT(result,'You remove the ', thing, ' from your inventory');
 
 UPDATE item_location
 SET placeName = (
-	SELECT placeName
-    FROM save_state S
-    WHERE S.sID = save
+    	SELECT placeName
+        FROM save_state
+        WHERE sID = save
+    )
+WHERE itemName = thing AND sID = save;
+
+ELSE
+
+SET result = CONCAT(result,'There is no ', thing, ' in your inventory');
+
+END IF;
+
+
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
+END$$
+
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `editItem` (IN `iName` VARCHAR(255), IN `iLocation` VARCHAR(255), IN `iDesc` TEXT, IN `iReq` VARCHAR(255), IN `sText` TEXT, IN `fText` TEXT, IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+
+IF NOT EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo AND itemName = iName
 )
-WHERE sID = save AND wID = worldID AND itemName = itemN;
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'The current world does not have any item with the name entered.';
+END IF;
+
+
+IF NOT EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = iLocation
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered location does not exist in this world.';
+END IF;
+
+
+UPDATE item
+SET description = iDesc
+WHERE itemName = iName AND wID = worldNo;
+
+UPDATE item_location
+SET placeName = iLocation
+WHERE wID = worldNo AND itemName = iName AND
+    sID = (
+    SELECT sID
+    FROM default_state
+    WHERE wID = worldNo
+    )
+;
+
+IF NOT EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo AND itemName = iReq
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered required item does not exist in this world.';
+END IF;
+
+
+DELETE FROM item_req
+WHERE wID = worldNo AND itemName = iName;
+
+
+IF iReq != ""
+THEN
+INSERT INTO item_req (itemName, reqName, wID, success_text, failure_text)
+VALUES (iName,iReq,worldNo,sText,fText);
+END IF;
+
+END$$
+
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `editPath` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `fPlace` VARCHAR(255), IN `tPlace` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+UPDATE path
+SET description = descText, fromPlace = fPlace, toPlace = tPlace
+WHERE wID = worldNo AND pathName = pName;
+
+END$$
+
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `editPlace` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `worldNo` INT)  NO SQL
+BEGIN
+
+IF NOT EXISTS (
+ 	SELECT * FROM place WHERE placeName = pName   
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'No place in the current world has the name entered.';
+ELSE
+
+UPDATE place
+SET place.description = descText
+WHERE place.placeName = pName AND place.wID = worldNo;
+
+END IF;
+
+
+
 
 END$$
 
@@ -89,6 +257,12 @@ BEGIN
 
 DECLARE curr_location VARCHAR(255);
 DECLARE req_item VARCHAR(255);
+DECLARE result TEXT;
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+SET result = "<br>";
+
 SET curr_location = (SELECT placeName
 	FROM save_state S
 	WHERE S.sID = save
@@ -120,6 +294,15 @@ IF EXISTS (SELECT 1
             FROM path P2
             WHERE P2.wID = worldID AND P2.fromPlace = curr_location AND P2.pathName = path)
             WHERE sID = save AND wID = worldID;
+            SET curr_location = (SELECT placeName
+	FROM save_state S
+	WHERE S.sID = save
+);
+        
+        SET result = CONCAT(result,'You took the path ', path, '. Now you are in room ', curr_location, '.');
+            
+        ELSE
+        	SET result = CONCAT(result,'You do not have the required items to take the path ', path, '.');
         END IF;
     
     ELSE
@@ -130,9 +313,22 @@ IF EXISTS (SELECT 1
         FROM path P2
         WHERE P2.wID = worldID AND P2.fromPlace = curr_location AND P2.pathName = path)
         WHERE sID = save AND wID = worldID;
+        
+        SET curr_location = (SELECT placeName
+	FROM save_state S
+	WHERE S.sID = save
+);
+        
+        SET result = CONCAT(result,'You took the path ', path, '. Now you are in room ', curr_location, '.');
     END IF;
+    
+    ELSE
+    	SET result = CONCAT(result,'Cannot find the path ', path, ' in the current room.');
 END IF;
 
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
 END$$
 
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `listPlayers` ()  READS SQL DATA
@@ -140,13 +336,124 @@ BEGIN
 SELECT * FROM player;
 END$$
 
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `loadGame` (IN `sName` VARCHAR(255), IN `uName` VARCHAR(255))  MODIFIES SQL DATA
+BEGIN
+
+DECLARE result TEXT;
+
+SET result = "<br>";
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+IF EXISTS (
+	SELECT sID
+    FROM player_state
+    WHERE username = uName AND saveName = sName
+)
+THEN
+SET result = CONCAT("<br>-- LOADED SAVE STATE '",sName,"' --");
+ELSE
+SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered save state does not exist.';
+END IF;
+
+
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
+
+
+END$$
+
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `lookAt` (IN `thing` VARCHAR(255), IN `save` INT, IN `worldID` INT)  NO SQL
 BEGIN
-    SELECT DISTINCT item.itemName, item_location.placeName, item_req.reqName
-    FROM item INNER JOIN item_location
-    ON (item.itemName = item_location.itemName AND item.wID = item_location.wID) LEFT JOIN item_req ON (item.itemName = item_req.itemName AND item.wID = item_req.wID)
-    WHERE item.wID = worldID AND item.itemName = item;
+    DECLARE req_item VARCHAR(255);
+    DECLARE description VARCHAR(255);
+    DECLARE curr_location VARCHAR(255);
+    DECLARE from_place VARCHAR(255);
+    DECLARE to_place VARCHAR(255);
+    DECLARE result TEXT;
 
+	SET curr_location = (SELECT placeName
+	FROM save_state S
+	WHERE S.sID = save
+);
+
+    CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+    SET result = "<br>";
+    SET result = CONCAT(result,'========================================<br>', 'Looking for things named ', thing, '<br>');
+
+	/* Check if item exists in current room */
+    IF EXISTS (SELECT 1
+    FROM item_location I1
+    WHERE I1.wID = worldID AND I1.itemName = thing AND I1.placeName = curr_location) THEN
+    	/* print out item name, description, requirement */
+        SET description = (SELECT I2.description
+                        FROM item I2
+                        WHERE I2.itemName = thing AND I2.wID = worldID);
+        
+        
+        /* Check for requirements */
+        IF EXISTS (SELECT 1
+                  	FROM item_req R
+                        WHERE R.itemName = thing AND R.wID = worldID)
+                   THEN
+        	SET req_item = (SELECT R.reqName
+                        FROM item_req R
+                        WHERE R.itemName = thing AND R.wID = worldID);
+                        
+             SET result = CONCAT(result,'<br>Found an item.<br>Name of item: ', thing, '<br>Description: ', description, '<br>Requirement: ', req_item, '<br>Going to check for paths.<br>');
+        ELSE
+        	SET result = CONCAT(result,'<br>Found an item:<br>Name of item: ', thing, '<br>Description: ', description, '<br>Requirement: none.<br>Going to check for paths.<br>');
+        END IF;
+        
+    ELSE
+    	SET result = CONCAT(result,'<br>Cannot find any items named ', thing, ' in the current room. Going to check for paths.<br>');
+    END IF;
+
+	/* Check if paths exists in current room */
+    IF EXISTS (SELECT 1
+    FROM path P1
+    WHERE P1.pathName = thing AND P1.wID = worldID AND P1.fromPlace = curr_location) THEN
+    	/* print out path name, description, from, to, requirement */
+        SET description = (SELECT P2.description
+                        FROM path P2
+                        WHERE P2.pathName = thing AND P2.wID = worldID AND P2.fromPlace = curr_location);
+                        
+        SET from_place = (SELECT P2.fromPlace
+                        FROM path P2
+                        WHERE P2.pathName = thing AND P2.wID = worldID AND P2.fromPlace = curr_location);
+                        
+        SET to_place = (SELECT P2.toPlace
+                        FROM path P2
+                        WHERE P2.pathName = thing AND P2.wID = worldID AND P2.fromPlace = curr_location);
+        
+        
+        /* Check for path requirements */
+        IF EXISTS (SELECT 1
+                  	FROM path_req R
+                        WHERE R.pathName = thing AND R.wID = worldID)
+                   THEN
+        	SET req_item = (SELECT R.reqName
+                        FROM path_req R
+                        WHERE R.pathName = thing AND R.wID = worldID);
+                        
+             SET result = CONCAT(result,'<br>Found a path.<br>Name of path: ', thing, '<br>Description: ', description, '<br>Goes from room ', from_place, ' to room ', to_place, '<br>Requirement: ', req_item);
+        ELSE
+        	SET result = CONCAT(result,'<br>Found a path.<br>Name of path: ', thing, '<br>Description: ', description, '<br>Goes from room ', from_place, ' to room ', to_place, '<br>Requirement: none.');
+        END IF;
+
+    
+    ELSE
+    	SET result = CONCAT(result,'<br>Cannot find any paths named ', thing, ' in the current room.');
+    END IF;
+
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
 END$$
 
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `makeItem` (IN `iName` VARCHAR(255), IN `iLocation` VARCHAR(255), IN `iDesc` TEXT, IN `iReq` VARCHAR(255), IN `sText` TEXT, IN `fText` TEXT, IN `worldNo` INT)  MODIFIES SQL DATA
@@ -163,6 +470,16 @@ THEN
     	SET MESSAGE_TEXT = 'Entered location does not exist in this world.';
 END IF;
 
+IF EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo AND itemName = iName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered item already exists in this world.';
+END IF;
+
 
 INSERT INTO item (itemName, description, wID)
 VALUES (iName,iDesc,worldNo);
@@ -175,7 +492,17 @@ VALUES (worldNo, iLocation, iName, (
     )
 );
 
-IF iReq = NULL
+IF NOT EXISTS (
+    SELECT itemName
+    FROM item
+    WHERE wID = worldNo
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered required item does not exist in this world.';
+END IF;
+
+IF iReq != ""
 THEN
 INSERT INTO item_req (itemName, reqName, wID, success_text, failure_text)
 VALUES (iName,iReq,worldNo,sText,fText);
@@ -198,8 +525,36 @@ INSERT INTO ret (logText) VALUES (CONCAT(sender," tells ",reciever," : ",body));
 SELECT * FROM ret;
 END$$
 
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `makePath` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `fPlace` VARCHAR(255), IN `tPlace` VARCHAR(255), IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+IF EXISTS (
+    SELECT pathName
+    FROM path
+    WHERE wID = worldNo AND pathName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered path already exists in this world.';
+END IF;
+
+INSERT INTO path (pathName,description,fromPlace,toPlace,wID)
+VALUES (pName,descText,fPlace,tPlace,worldNo);
+
+END$$
+
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `makePlace` (IN `pName` VARCHAR(255), IN `descText` TEXT, IN `worldNo` INT)  NO SQL
 BEGIN
+
+IF EXISTS (
+    SELECT placeName
+    FROM place
+    WHERE wID = worldNo AND placeName = pName
+)
+THEN
+	SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Entered place already exists in this world.';
+END IF;
 
 INSERT INTO place (placeName, description, wID)
 VALUES (pName,descText,worldNo);
@@ -214,51 +569,102 @@ VALUES (wName,true,uName);
 
 END$$
 
-CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `pickUp` (IN `item` VARCHAR(255), IN `save` INT, IN `worldID` INT)  NO SQL
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `newGame` (IN `saveName` VARCHAR(255), IN `worldNo` INT, IN `uName` VARCHAR(255))  MODIFIES SQL DATA
 BEGIN
 
-DECLARE curr_location VARCHAR(255);
-DECLARE req_item VARCHAR(255);
-SET curr_location = (SELECT placeName
-	FROM save_state S
-	WHERE S.sID = save
-);
+DECLARE pName VARCHAR(255);
 
-/* Check if item is in the current room */
-IF EXISTS (SELECT 1
-    FROM item_location I
-    WHERE I.sID = save AND I.wID = worldID AND I.itemName = item AND I.placeName = curr_location) THEN
-    
-    /* Check if there is a required item */
-	IF EXISTS (SELECT 1
-    FROM item_req I2
-    WHERE I2.wID = worldID AND I2.itemName = item) THEN
-    
-        SET req_item = (SELECT I3.reqName
-        FROM item_req I3
-        WHERE I3.wID = worldID AND I3.itemName = item
-        );
-        
-        /* Check if player's inventory contains the required item */
-        IF EXISTS (SELECT 1
-        FROM item_location I1
-        WHERE I1.wID = worldID AND I1.sID = save AND I1.placeName = 'inventory' AND itemName = req_item) THEN
-        	/* add to inventory */
-            UPDATE item_location
-            SET placeName = 'inventory'
-            WHERE itemName = item AND sID = save and wID = worldID;
-        END IF;
- 	ELSE
-    	/* add to inventory */
-        UPDATE item_location
-        SET placeName = 'inventory'
-        WHERE itemName = item AND sID = save and wID = worldID;
-    
-    END IF;
-    
+SELECT placeName
+INTO pName
+FROM save_state
+WHERE wID = worldNo AND sID IN (SELECT sID FROM default_state);
+
+INSERT INTO save_state ( wID, placeName )
+VALUES ( worldNo, pName );
+
+INSERT INTO player_state ( sID, username, saveName )
+VALUES ( LAST_INSERT_ID(), uName, saveName );
+
+END$$
+
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `pickUp` (IN `thing` VARCHAR(255), IN `save` INT, IN `worldNo` INT)  MODIFIES SQL DATA
+BEGIN
+
+DECLARE result TEXT;
+DECLARE requirement VARCHAR(255);
+
+SET result = "<br>";
+
+CREATE TEMPORARY TABLE ret (id INT AUTO_INCREMENT, logText TEXT, PRIMARY KEY (id));
+
+IF EXISTS (
+	SELECT item.itemName
+    FROM item
+    INNER JOIN item_location ON item.wID = item_location.wID AND item.itemName = item_location.itemName
+    WHERE item.itemName = thing AND item.wID = worldNo AND item_location.sID = save AND item_location.placeName =  (
+    	SELECT placeName
+        FROM save_state
+        WHERE sID = save
+    )
+)
+THEN
+
+
+IF EXISTS (
+	SELECT IR.reqName
+    FROM item_req AS IR
+    INNER JOIN item_location AS IL ON IR.reqName = IL.itemName AND IR.wID = IL.wID
+    WHERE IL.itemName = thing AND IL.sID = save
+)
+THEN
+	SET requirement = (
+	SELECT IR.reqName
+    FROM item_req AS IR
+    INNER JOIN item_location AS IL ON IR.reqName = IL.itemName AND IR.wID = IL.wID
+    WHERE IL.itemName = thing AND IL.sID = save);
+
+IF EXISTS (
+    SELECT itemName
+    FROM item_location
+    WHERE sID = save AND itemName = requirement AND placeName = 'inventory')
+THEN
+SET result = CONCAT(result,(
+	SELECT success_text FROM item_req WHERE wID = worldNo AND itemName = thing)
+);
+ELSE
+SET result = CONCAT(result,(
+	SELECT failure_text FROM item_req WHERE wID = worldNo AND itemName = thing)
+);
+END IF;
+
+END IF;
+
+UPDATE item_location
+SET placeName = 'inventory'
+WHERE sID = save AND itemName = thing;
+
+SET result = CONCAT(result,"You pick up the ",thing," and transfer it to your inventory.");
+
+ELSE
+
+IF EXISTS (
+	SELECT itemName
+    FROM item_location
+    WHERE sID = save AND itemName = thing AND placeName = 'inventory'
+)
+THEN
+SET result = CONCAT(result,'The ',thing,' is already in your inventory');
+ELSE
+SET result = CONCAT(result,"If it exists, the ",thing," is not here.");
+END IF;
+
 END IF;
 
 
+
+INSERT INTO ret (logText) VALUES (result);
+
+SELECT * FROM ret;
 END$$
 
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `selectWorld` (IN `worldNo` INT, IN `uName` VARCHAR(255))  MODIFIES SQL DATA
@@ -280,7 +686,7 @@ END IF;
 
 END$$
 
-CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `setupStateForPlayer` (IN `user` VARCHAR(255), IN `worldID` INT)  MODIFIES SQL DATA
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `setupStateForPlayer` (IN `sName` VARCHAR(255), IN `user` VARCHAR(255), IN `worldID` INT)  MODIFIES SQL DATA
 BEGIN
 
 DECLARE done INT default 0;
@@ -311,8 +717,8 @@ INSERT INTO save_state ( wID, placeName )
 SET theState = LAST_INSERT_ID();
 
 
-INSERT INTO player_state( sID, username )
-	VALUES (theState,`user`);
+INSERT INTO player_state( sID, username, saveName)
+	VALUES (theState,`user`,sName);
 
 OPEN itemCurse;
 REPEAT
@@ -386,12 +792,35 @@ WHERE I.wID = worldNo AND IL.sID = (
 
 END$$
 
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `viewPaths` (IN `worldNo` INT)  READS SQL DATA
+BEGIN
+
+
+SELECT P.pathName AS NAME, P.description AS DESCRIPTION, P.fromPlace AS ORIGIN, P.toPlace AS DESTINATION
+FROM path AS P
+WHERE P.wID = worldNo;
+
+END$$
+
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `viewPlaces` (IN `worldNo` INT)  MODIFIES SQL DATA
 BEGIN
 
-SELECT P.placeName AS NAME, P.description AS DESCRIPTION
-FROM place AS P
-WHERE P.wID = worldNo;
+
+SELECT placeName AS NAME, description AS DESCRIPTION
+FROM place
+WHERE wID = worldNo;
+
+END$$
+
+CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `viewSaves` (IN `uName` VARCHAR(255))  MODIFIES SQL DATA
+BEGIN
+
+SELECT worldName as WORLD, saveName AS NAME
+FROM player_state
+INNER JOIN save_state ON player_state.sID = save_state.sID
+INNER JOIN world ON save_state.wID = world.wID
+WHERE username = uName
+ORDER BY worldName ASC;
 
 END$$
 
@@ -437,7 +866,8 @@ INSERT INTO `default_state` (`sID`, `wID`) VALUES
 (17, 12),
 (18, 13),
 (19, 14),
-(26, 21);
+(21, 15),
+(25, 17);
 
 -- --------------------------------------------------------
 
@@ -458,8 +888,9 @@ CREATE TABLE `item` (
 INSERT INTO `item` (`itemName`, `description`, `wID`) VALUES
 ('bear trap', 'Yet another sign you should leave this cave.', 1),
 ('boat', 'The boat lies broken, marooned on the sand.', 1),
-('item1', 'the first item', 21),
-('item2', '2nd item', 21),
+('Iron Key', 'It\'s pretty heavy.', 15),
+('item1', 'hi', 17),
+('item2', 'hi', 17),
 ('key', 'A worn key.', 1),
 ('ladder', 'A metal step ladder. Old, but sturdy.', 1),
 ('mushroom', 'It is quite large and probably poisonous.', 1),
@@ -468,12 +899,17 @@ INSERT INTO `item` (`itemName`, `description`, `wID`) VALUES
 ('rock', 'It is a rock.', 4),
 ('rope', 'A spool of rope.', 1),
 ('skeleton', 'The skull has a large bite mark on it.', 1),
+('Skull Grabber', 'Useful for grabbing skulls.', 13),
+('Skull Magnet', 'A', 13),
 ('Spooky Skull', 'It chatters softly.', 13),
 ('swimming trunks', 'A nice swimming suit.', 1),
 ('tea', 'You refuse to leave the room before drinking it.', 1),
 ('telescope', 'The telescope looks out onto the horizon.', 3),
+('Test Item', 'Test', 13),
 ('test object', 'Replace with actual item later.', 2),
 ('Test Object', 'This is a test', 14),
+('testItem', 'This is a test', 13),
+('Testy', 'A bit testy', 13),
 ('Toy Car', 'It is so old, most of the paint has peeled off.', 13);
 
 --
@@ -523,7 +959,6 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'beach', 'rope', 6),
 (1, 'beach', 'rope', 8),
 (1, 'beach', 'rope', 10),
-(13, 'Black Lodge Entranceway', 'Spooky Skull', 18),
 (1, 'cave', 'bear trap', 1),
 (1, 'cave', 'bear trap', 6),
 (1, 'cave', 'bear trap', 8),
@@ -552,13 +987,24 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'house', 'tea', 6),
 (1, 'house', 'tea', 8),
 (1, 'house', 'tea', 10),
-(21, 'inventory', 'item1', 26),
-(21, 'inventory', 'item2', 26),
+(15, 'inventory', 'Iron Key', 23),
+(17, 'inventory', 'item1', 26),
 (1, 'lake', 'paddle', 1),
 (1, 'lake', 'paddle', 6),
 (1, 'lake', 'paddle', 8),
 (1, 'lake', 'paddle', 10),
-(3, 'second floor', 'telescope', 3);
+(13, 'Red Room', 'Skull Grabber', 18),
+(13, 'Red Room', 'Skull Magnet', 18),
+(13, 'Red Room', 'Spooky Skull', 18),
+(13, 'Red Room', 'Test Item', 18),
+(13, 'Red Room', 'Testy', 18),
+(3, 'second floor', 'telescope', 3),
+(15, 'start', 'Iron Key', 21),
+(15, 'start', 'Iron Key', 24),
+(17, 'start', 'item1', 25),
+(17, 'start', 'item2', 25),
+(17, 'start', 'item2', 26),
+(13, 'start', 'testItem', 18);
 
 -- --------------------------------------------------------
 
@@ -580,11 +1026,15 @@ CREATE TABLE `item_req` (
 
 INSERT INTO `item_req` (`itemName`, `reqName`, `wID`, `success_text`, `failure_text`) VALUES
 ('bear trap', 'skeleton', 1, '', ''),
-('item2', 'item1', 21, '', ''),
+('item2', 'item1', 17, 's', 'f'),
 ('key', 'paddle', 1, '', ''),
 ('ladder', 'paddle', 1, '', ''),
 ('mushroom', 'bear trap', 1, '', ''),
-('tea', 'mushroom', 1, '', '');
+('Skull Magnet', 'Spooky Skull', 13, '', ''),
+('Spooky Skull', 'Skull Grabber', 13, 'You pick up the Spooky Skull using the Skull Grabber.', 'You can\'t quite reach it. If only you had some sort of Skull Grabber...'),
+('tea', 'mushroom', 1, '', ''),
+('Test Item', 'Spooky Skull', 13, '', ''),
+('Testy', 'Spooky Skull', 13, 'Succ', 'Fail');
 
 -- --------------------------------------------------------
 
@@ -685,19 +1135,20 @@ CREATE TABLE `path` (
 --
 
 INSERT INTO `path` (`pathName`, `description`, `fromPlace`, `toPlace`, `wID`) VALUES
-('backtostart', 'goes back to start', 'place1', 'start', 21),
+('Dark Tunnel North', 'A long, dark hallway stretches northward, leading to a distant light.', 'Spooky Cave', 'Workshop', 15),
+('Dark Tunnel South', 'The tunnel stretches downwards and southwards to the musty depths of a cave.', 'Workshop', 'Spooky Cave', 15),
 ('door to cabin', 'The door of the house.', 'field', 'house', 1),
 ('door to field', 'The door of the house.', 'house', 'field', 1),
 ('downhill path', 'A dirt road leading downhill', 'field', 'beach', 1),
 ('hole down', 'A hole in the ground', 'field', 'cave', 1),
 ('hole up', 'A hole in the cave ceiling', 'cave', 'field', 1),
-('path1', 'goes to place1', 'start', 'place1', 21),
-('place2tostart', 'goes from place2 to start', 'place2', 'start', 21),
+('Northward Iron Door', 'It looks pretty heavy.', 'start', 'Spooky Cave', 15),
+('Northward Ornate Door', 'Its fancy AND northward.', 'Red Room', 'Dining Room', 13),
+('path1', 'a path', 'start', 'place1', 17),
 ('shore', 'The water laps onto the beach.', 'beach', 'lake', 1),
 ('shore up', 'The water laps onto the beach.', 'lake', 'beach', 1),
 ('stairs down', 'Serviceable stairs', 'second floor', 'first floor', 3),
 ('stairs up', 'Serviceable stairs', 'first floor', 'second floor', 3),
-('start2place2', 'goes from start to place2', 'start', 'place2', 21),
 ('uphill path', 'A dirt road leading uphill', 'beach', 'field', 1),
 ('uphill pathway', 'A dirt road leading uphill', 'beach', 'field', 1);
 
@@ -731,7 +1182,7 @@ CREATE TABLE `path_req` (
 --
 
 INSERT INTO `path_req` (`pathName`, `reqName`, `wID`) VALUES
-('start2place2', 'item1', 21),
+('path1', 'item1', 17),
 ('door to cabin', 'key', 1),
 ('hole up', 'ladder', 1),
 ('hole down', 'rope', 1),
@@ -760,17 +1211,18 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('beach', 'It is sandy here, and there is water.', 1),
 ('Black Lodge Entranceway', 'The forboding decor in the entrance hall goes to show visitors they are not in for a fun time.', 13),
 ('cave', 'It is dark. you are likely to be eaten by a grue.', 1),
+('Dining Room', 'There\'s a long table here.', 13),
 ('field', 'The meadow is sunny and pleasant.', 1),
 ('first floor', 'You can see some stairs and a secretary desk.', 3),
 ('house', 'It is a small but serviceable cabin.', 1),
-('inventory', '', 0),
-('inventory', '', 21),
+('inventory', '', 15),
+('inventory', '', 17),
 ('lake', 'The water is deep and murky.', 1),
-('place1', 'room after start', 21),
-('place2', 'another room', 21),
-('Red Room', 'It is spooky and from Twin Peaks.', 13),
+('place1', 'first place', 17),
+('place2', '2nd place', 17),
+('Red Room', 'Hey look, a new description!', 13),
 ('second floor', 'Looking out the window, you can see your house from here.', 3),
-('start', '', 0),
+('Spooky Cave', 'It\'s pretty spooky.', 15),
 ('start', '', 1),
 ('start', '', 2),
 ('start', '', 3),
@@ -782,8 +1234,11 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('start', '', 10),
 ('start', '', 11),
 ('start', '', 12),
+('start', 'it\'s a starting place', 13),
 ('start', '', 14),
-('start', '', 21);
+('start', '', 15),
+('start', '', 17),
+('Workshop', 'A simple, underground workshop.', 15);
 
 --
 -- Triggers `place`
@@ -829,7 +1284,7 @@ INSERT INTO `player` (`username`, `password_hash`, `salt`) VALUES
 ('Heisenberg', '752e4c65971de109af4a654c44538397', 'rkwz19mO'),
 ('Jacob', '5db1af4932628debb198ed1b51662f8c', 'czPRP4aD'),
 ('Quentin', '3644d70bc4451f87508ea632700458d6', 'jQiyEcQC'),
-('user', '26f255cd8cbaa859eb2c6251ab5b44ea', 'wbgX/3z2');
+('user', '174933f8498139fb6809ea63f7898e02', 'rN1flKXm');
 
 --
 -- Triggers `player`
@@ -853,20 +1308,20 @@ DELIMITER ;
 
 CREATE TABLE `player_state` (
   `sID` int(11) NOT NULL,
-  `username` varchar(255) NOT NULL
+  `username` varchar(255) NOT NULL,
+  `saveName` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `player_state`
 --
 
-INSERT INTO `player_state` (`sID`, `username`) VALUES
-(6, 'alice'),
-(7, 'alice'),
-(8, 'bob'),
-(9, 'bob'),
-(10, 'eve'),
-(11, 'eve');
+INSERT INTO `player_state` (`sID`, `username`, `saveName`) VALUES
+(24, 'Faythe', 'Demo'),
+(20, 'Faythe', 'Game1'),
+(22, 'Faythe', 'Jorg1'),
+(23, 'Faythe', 'Jorg2'),
+(26, 'user', 'save1');
 
 -- --------------------------------------------------------
 
@@ -904,7 +1359,13 @@ INSERT INTO `save_state` (`sID`, `wID`, `placeName`) VALUES
 (17, 12, 'start'),
 (18, 13, 'start'),
 (19, 14, 'start'),
-(26, 21, 'start');
+(20, 13, 'start'),
+(21, 15, 'start'),
+(22, 15, 'start'),
+(23, 15, 'start'),
+(24, 15, 'start'),
+(25, 17, 'start'),
+(26, 17, 'place1');
 
 --
 -- Triggers `save_state`
@@ -916,6 +1377,37 @@ DELETE FROM player_state WHERE sID = OLD.sID;
 END
 $$
 DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `Student`
+--
+
+CREATE TABLE `Student` (
+  `sID` int(11) NOT NULL,
+  `sName` varchar(255) NOT NULL,
+  `GPA` decimal(3,2) NOT NULL,
+  `sizeHS` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Student`
+--
+
+INSERT INTO `Student` (`sID`, `sName`, `GPA`, `sizeHS`) VALUES
+(123, 'Amy', '3.90', 1000),
+(234, 'Bob', '3.60', 1500),
+(345, 'Craig', '3.50', 500),
+(456, 'Doris', '3.90', 1000),
+(543, 'Craig', '3.40', 2000),
+(567, 'Edward', '2.90', 2000),
+(654, 'Amy', '3.90', 1000),
+(678, 'Fay', '3.80', 200),
+(765, 'Jay', '2.90', 1500),
+(789, 'Gary', '3.40', 800),
+(876, 'Irene', '3.90', 400),
+(987, 'Helen', '4.00', 800);
 
 -- --------------------------------------------------------
 
@@ -948,7 +1440,8 @@ INSERT INTO `world` (`wID`, `worldName`, `private`, `owner`) VALUES
 (12, 'Test World', 1, 'Grover'),
 (13, 'The Church', 1, 'Faythe'),
 (14, 'Test world', 1, 'Faythe'),
-(21, 'world1', 1, 'user');
+(15, 'Jorg', 1, 'Faythe'),
+(17, 'world1', 1, 'user');
 
 --
 -- Triggers `world`
@@ -965,11 +1458,11 @@ DELIMITER ;
 DELIMITER $$
 CREATE TRIGGER `insert_world` AFTER INSERT ON `world` FOR EACH ROW BEGIN
 
+INSERT INTO place ( placeName, description, wID)
+	VALUES ('inventory','',NEW.wID);
+
 INSERT INTO place ( placeName, description, wID )
 	VALUES ('start','',NEW.wID);
-   
-INSERT INTO place ( placeName, description, wID )
-	VALUES ('inventory','',NEW.wID);
 
 INSERT INTO save_state ( wID, placeName)
 	VALUES ( NEW.wID, 'start' );
@@ -1081,7 +1574,7 @@ ALTER TABLE `player`
 --
 ALTER TABLE `player_state`
   ADD PRIMARY KEY (`sID`),
-  ADD KEY `username` (`username`);
+  ADD UNIQUE KEY `nameCopy` (`username`,`saveName`);
 
 --
 -- Indexes for table `save_state`
@@ -1089,6 +1582,12 @@ ALTER TABLE `player_state`
 ALTER TABLE `save_state`
   ADD PRIMARY KEY (`sID`),
   ADD KEY `wID` (`wID`);
+
+--
+-- Indexes for table `Student`
+--
+ALTER TABLE `Student`
+  ADD PRIMARY KEY (`sID`);
 
 --
 -- Indexes for table `world`
@@ -1124,7 +1623,7 @@ ALTER TABLE `save_state`
 -- AUTO_INCREMENT for table `world`
 --
 ALTER TABLE `world`
-  MODIFY `wID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `wID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- Constraints for dumped tables
@@ -1167,6 +1666,46 @@ ALTER TABLE `path`
   ADD CONSTRAINT `path_ibfk_1` FOREIGN KEY (`fromPlace`,`wID`) REFERENCES `place` (`placeName`, `wID`),
   ADD CONSTRAINT `path_ibfk_2` FOREIGN KEY (`toPlace`,`wID`) REFERENCES `place` (`placeName`, `wID`),
   ADD CONSTRAINT `path_ibfk_3` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
+
+--
+-- Constraints for table `path_req`
+--
+ALTER TABLE `path_req`
+  ADD CONSTRAINT `path_req_ibfk_1` FOREIGN KEY (`pathName`,`wID`) REFERENCES `path` (`pathName`, `wID`),
+  ADD CONSTRAINT `path_req_ibfk_2` FOREIGN KEY (`reqName`,`wID`) REFERENCES `item` (`itemName`, `wID`),
+  ADD CONSTRAINT `path_req_ibfk_3` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
+
+--
+-- Constraints for table `place`
+--
+ALTER TABLE `place`
+  ADD CONSTRAINT `place_ibfk_1` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
+
+--
+-- Constraints for table `player_state`
+--
+ALTER TABLE `player_state`
+  ADD CONSTRAINT `player_state_ibfk_1` FOREIGN KEY (`sID`) REFERENCES `save_state` (`sID`),
+  ADD CONSTRAINT `player_state_ibfk_2` FOREIGN KEY (`username`) REFERENCES `player` (`username`);
+
+--
+-- Constraints for table `save_state`
+--
+ALTER TABLE `save_state`
+  ADD CONSTRAINT `save_state_ibfk_1` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
+
+--
+-- Constraints for table `world`
+--
+ALTER TABLE `world`
+  ADD CONSTRAINT `world_ibfk_1` FOREIGN KEY (`owner`) REFERENCES `player` (`username`);
+
+--
+-- Constraints for table `world_rating`
+--
+ALTER TABLE `world_rating`
+  ADD CONSTRAINT `world_rating_ibfk_1` FOREIGN KEY (`username`) REFERENCES `player` (`username`),
+  ADD CONSTRAINT `world_rating_ibfk_2` FOREIGN KEY (`wID`) REFERENCES `world` (`wID`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
