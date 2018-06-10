@@ -12,6 +12,7 @@
 
 	if(isset($_SESSION["SAVE_NAME"]) && isset($_SESSION["username"])){
 		$_SESSION["save"] = fetchSaveID($_SESSION["username"],$_SESSION["SAVE_NAME"]);
+		$_SESSION["SAVE_WORLD"] = fetchSaveWorld($_SESSION["save"]);
 		//echo $_SESSION["SAVE_NAME"];
 		//echo "->" . $_SESSION["save"] . "<-";
 	}
@@ -21,7 +22,7 @@
 		"PICK UP","pickUp",array(
 		new AutoEntry("item","text","regular","",true),
 		new AutoEntry("save","number","autoget","",true),
-		new AutoEntry("world","number","autoget","",true)
+		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
 	);
 	
@@ -29,7 +30,7 @@
 		"DROP","dropItem",array(
 		new AutoEntry("item","text","regular","",true),
 		new AutoEntry("save","number","autoget","",true),
-		new AutoEntry("world","number","autoget","",true)
+		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
 	);
 
@@ -44,27 +45,27 @@
 		"GO VIA","goVia",array(
 		new AutoEntry("path","text","regular","",true),
 		new AutoEntry("save","number","autoget","",true),
-		new AutoEntry("world","number","autoget","",true)
+		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
 	);
 	
 	$inventory = new AutoForm(
 		"INVENTORY","showInventory",array(
 		new AutoEntry("save","number","autoget","",true),
-		new AutoEntry("world","number","autoget","",true)
+		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
 	);
 	
 	$currLocation = new AutoForm(
 		"CURRENT ROOM","showLocation",array(
 		new AutoEntry("save","number","autoget","",true),
-		new AutoEntry("world","number","autoget","",true)
+		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
 	);
 
 	$load = new AutoForm(
-		"LOAD","loadSave",array(
-		new AutoEntry("saveName","text","autoset","",true),
+		"LOAD","loadGame",array(
+		new AutoEntry("SAVE_NAME","text","autoset","",true),
 		new AutoEntry("username","text","autoget","",true)
 		),false
 	);
@@ -74,7 +75,7 @@
 	$forms = array( $pickup, $drop, $lookat, $govia, $load, $currLocation, $inventory );
 	
 	$aGets = array(array("username","You need to be logged in to play a game"));
-	$hasTable = true;
+	$hasTable = false;
 	$hasLog = true;
 	$page = new AutoPage("QUEST DATABASE","Play Game",$forms,$content,$aGets,$hasTable,$hasLog);
 	

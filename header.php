@@ -33,7 +33,29 @@
 		
 	}	
 
+	function fetchSaveWorld($saveID){
+		$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 	
+		//consumeResults();	
+		$call = "SELECT wID FROM save_state WHERE sID = '" . 
+		mysqli_real_escape_string($conn,$saveID) . "' ; "; 
+		//$_SESSION["check"] = $call;
+		$table = mysqli_query($conn, $call);//, MYSQLI_USE_RESULT);
+				
+		$res = NULL;
+		if($table){
+			$row = mysqli_fetch_row($table);
+			//$_SESSION["check"] = $row[0] . "---";
+			if($row){
+				$res = $row[0] ;
+			}
+		}
+		mysqli_close($conn);
+		return $res;
+		
+	}
+
+
 		class AutoEntry {
 
 			var $entryName;
@@ -876,7 +898,6 @@
 							$theForm->doAutoSets();
 							$this->etch($this->generateError());
 							$this->etch($this->generateTable($formResult));
-							mysqli_free_result(formResult); //?
 						}
 						else{
 							$this->etch($this->generateError());
