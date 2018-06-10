@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: classmysql.engr.oregonstate.edu:3306
--- Generation Time: Jun 07, 2018 at 11:42 PM
+-- Generation Time: Jun 09, 2018 at 07:43 PM
 -- Server version: 10.1.22-MariaDB
 -- PHP Version: 7.0.30
 
@@ -87,19 +87,27 @@ END$$
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `goVia` (IN `path` VARCHAR(255), IN `save` INT, IN `worldID` INT)  NO SQL
 BEGIN
 /* 
-Check whether path exists?
+Check item requirements?
 */
 
-UPDATE save_state
-SET placeName = 
-(SELECT path.toPlace
-FROM path 
-WHERE path.wID = worldID AND path.fromPlace = (SELECT placeName
-	FROM save_state
-	WHERE placeName.sid = save
-) AND path.pathName = path)
+DECLARE curr_location VARCHAR(255);
+SET curr_location = (SELECT placeName
+	FROM save_state S
+	WHERE S.sID = save
+);
 
-WHERE sID = save AND wID = worldID;
+/* check if path exists */
+IF EXISTS (SELECT 1
+    FROM path P1
+    WHERE P1.wID = worldID AND P1.fromPlace = curr_location AND P1.pathName = path) THEN
+
+    UPDATE save_state
+    SET placeName = 
+    (SELECT P2.toPlace
+    FROM path P2
+    WHERE P2.wID = worldID AND P2.fromPlace = curr_location AND P2.pathName = path)
+    WHERE sID = save AND wID = worldID;
+END IF;
 
 END$$
 
@@ -279,13 +287,6 @@ BEGIN
 	SELECT S.placeName AS 'CURRENT ROOM' 
     FROM save_state S
     WHERE S.sID = save AND S.wID = world;
-END$$
-
-CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `showStatus` (IN `save` INT, IN `world` INT)  NO SQL
-BEGIN
-	SELECT S.placeName AS 'CURRENT ROOM', I.itemName AS INVENTORY 
-    FROM item_location I, save_state S
-    WHERE I.sID = save AND I.wID = world AND S.sID = save AND S.wID = world;
 END$$
 
 CREATE DEFINER=`cs340_lemieuxs`@`%` PROCEDURE `signIn` (IN `uName` VARCHAR(40), IN `passHash` VARCHAR(40))  MODIFIES SQL DATA
@@ -494,12 +495,12 @@ INSERT INTO `item_location` (`wID`, `placeName`, `itemName`, `sID`) VALUES
 (1, 'house', 'tea', 6),
 (1, 'house', 'tea', 8),
 (1, 'house', 'tea', 10),
-(21, 'inventory', 'item1', 26),
 (21, 'inventory', 'item2', 26),
 (1, 'lake', 'paddle', 1),
 (1, 'lake', 'paddle', 6),
 (1, 'lake', 'paddle', 8),
 (1, 'lake', 'paddle', 10),
+(21, 'place1', 'item1', 26),
 (3, 'second floor', 'telescope', 3);
 
 -- --------------------------------------------------------
@@ -626,11 +627,13 @@ CREATE TABLE `path` (
 --
 
 INSERT INTO `path` (`pathName`, `description`, `fromPlace`, `toPlace`, `wID`) VALUES
+('backtostart', 'goes back to start', 'place1', 'start', 21),
 ('door to cabin', 'The door of the house.', 'field', 'house', 1),
 ('door to field', 'The door of the house.', 'house', 'field', 1),
 ('downhill path', 'A dirt road leading downhill', 'field', 'beach', 1),
 ('hole down', 'A hole in the ground', 'field', 'cave', 1),
 ('hole up', 'A hole in the cave ceiling', 'cave', 'field', 1),
+('path1', 'goes to place1', 'start', 'place1', 21),
 ('shore', 'The water laps onto the beach.', 'beach', 'lake', 1),
 ('shore up', 'The water laps onto the beach.', 'lake', 'beach', 1),
 ('stairs down', 'Serviceable stairs', 'second floor', 'first floor', 3),
@@ -702,6 +705,7 @@ INSERT INTO `place` (`placeName`, `description`, `wID`) VALUES
 ('inventory', '', 0),
 ('inventory', '', 21),
 ('lake', 'The water is deep and murky.', 1),
+('place1', 'room after start', 21),
 ('Red Room', 'It is spooky and from Twin Peaks.', 13),
 ('second floor', 'Looking out the window, you can see your house from here.', 3),
 ('start', '', 0),
@@ -838,7 +842,7 @@ INSERT INTO `save_state` (`sID`, `wID`, `placeName`) VALUES
 (17, 12, 'start'),
 (18, 13, 'start'),
 (19, 14, 'start'),
-(26, 21, 'start');
+(26, 21, 'place1');
 
 --
 -- Triggers `save_state`

@@ -40,7 +40,8 @@
 	$govia = new AutoForm(
 		"GO VIA","goVia",array(
 		new AutoEntry("path","text","regular","",true),
-		new AutoEntry("save","number","autoget","",true)
+		new AutoEntry("save","number","autoget","",true),
+		new AutoEntry("world","number","autoget","",true)
 		),false
 	);
 	
