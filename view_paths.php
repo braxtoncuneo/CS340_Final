@@ -14,7 +14,8 @@
 	$forms = array(
 		new AutoForm("worlds","viewPaths",$entries,false)
 	);
-	$autoGets = array(array("username","Error: To view your worlds, you need to be logged in."));
+	$autoGets = array(	array("username","Error: To view your worlds, you need to be logged in."),
+				array("world","Error: To view the paths of a world, you need to have that world selected"));
 	$hasTable = true;
 	$hasLog = false;
 	

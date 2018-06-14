@@ -10,6 +10,7 @@
 		"VIEW WORLDS" => "view_worlds.php",
 		"MAKE WORLD" => "make_world.php",
 		"DELETE WORLD" => "delete_world.php",
-		"SELECT WORLD" => "select_world.php"
+		"SELECT WORLD" => "select_world.php",
+		"PUBLISH WORLD" => "publish_world.php"
 	)
 ?>

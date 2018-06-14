@@ -9,7 +9,7 @@
 	include "header.php";
 
 	
-	unset($_SESSION["username"]);
+	session_unset();
 	$autoGets = array(array("username","Successfully logged out."));
 	$hasTable = false;
 	$hasLog = false;

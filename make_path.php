@@ -13,6 +13,9 @@
 		new AutoEntry("DESCRIPTION","textarea","regular","",true),
 		new AutoEntry("ORIGIN","text","regular","",true),
 		new AutoEntry("DESTINATION","text","regular","",true),
+		new AutoEntry("REQUIREMENT","text","regular","",false),
+		new AutoEntry("SUCCESS_TEXT","textarea","regular","",false),
+		new AutoEntry("FAILURE_TEXT","textarea","regular","",false),
 		new AutoEntry("world","number","autoget","",true)
 	);
 	$forms = array(

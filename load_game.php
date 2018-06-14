@@ -11,14 +11,14 @@
 	include "header.php";
 
 	$newSave = new AutoForm(
-		"DELETE SAVE","deleteGame",array(
-		new AutoEntry("SAVE_NAME","text","regular","",true),
-		new AutoEntry("username","text","autoget","",true)
+		"LOAD SAVE","loadGame",array(
+		new AutoEntry("SAVE_NAME","text","autoset","",true),
+		new AutoEntry("username","text","autoget","",true),
 		),false
 	);
 
 	$forms = array(	$newSave );
-	$aGets = array(array("username","You need to be logged in to delete a save"));
+	$aGets = array(array("username","You need to be logged in to play a game"));
 	$hasTable = false;
 	$hasLog = false;
 	$page = new AutoPage("QUEST DATABASE","Play Game",$forms,$content,$aGets,$hasTable,$hasLog);

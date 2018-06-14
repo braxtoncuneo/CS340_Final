@@ -6,6 +6,10 @@
 		"LOG IN" => "log_in.php",
 		"PLAY GAME" => "play_game.php",
 		"SAVES" => "view_saves.php",
-		"NEW GAME" => "new_game.php"
+		"NEW SAVE" => "new_game.php",
+		"LOAD SAVE" => "load_game.php",
+		"DELETE SAVE" => "delete_game.php",
+		"RATE WORLD" => "rate_world.php",
+		"PUBLIC WORLDS" => "view_public.php"
 	);
 ?>

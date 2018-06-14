@@ -36,7 +36,7 @@
 
 	$lookat = new AutoForm(
 		"LOOK AT","lookAt",array(
-		new AutoEntry("thing","text","regular","",true),
+		new AutoEntry("thing","text","regular","",false),
 		new AutoEntry("save","number","autoget","",true),
 		new AutoEntry("SAVE_WORLD","number","autoget","",true)
 		),false
@@ -76,7 +76,9 @@
 	$forms = array( $pickup, $drop, $lookat, $govia, $load );//, $currLocation, $inventory );
 
 	
-	$aGets = array(array("username","You need to be logged in to play a game"));
+	$aGets = array(	array("username","You need to be logged in to play a game"),
+			array("SAVE_WORLD","World of selected save has been altered or deleted. Select a different save."),
+			array("SAVE_NAME","You need to load a save before playing") );
 	$hasTable = false;
 	$hasLog = true;
 	$page = new AutoPage("QUEST DATABASE","Play Game",$forms,$content,$aGets,$hasTable,$hasLog);

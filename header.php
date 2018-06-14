@@ -302,6 +302,7 @@
 			function typeErrorMessage(){
 				$this->message =	"Type error: bad type '" .
 									gettype($this->entryValue) .
+									"' of value '" . $this->entryValue .
 									"' used for " . $this->entryType .
 									" entry " . $this->entryName;
 			}
@@ -310,6 +311,8 @@
 			function load() {
 				if($this->isAutoGet()){
 					$this->entryValue = $_SESSION[$this->entryName];
+				}
+				else if($this->isHidden()){
 				}
 				else{
 					$this->entryValue = trim($_POST[$this->entryName]);
@@ -645,10 +648,35 @@
 						$res = $row[0] ;
 					}
 				}
+				mysqli_free_result($table);
 				mysqli_close($conn);
 				return $res;
 				
-			}	
+			}
+
+
+			function fetchWorldRating($worldNo){
+				$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+			
+				//consumeResults();	
+				$call = "CALL getRating ( " . 
+					mysqli_real_escape_string($conn,$worldNo) . " );";
+				//$_SESSION["check"] = $call;
+				$table = mysqli_query($conn, $call);//, MYSQLI_USE_RESULT);
+				
+				$res = NULL;
+				if($table){
+					$row = mysqli_fetch_row($table);
+					//$_SESSION["check"] = $row[0] . "---";
+					if($row){
+						$res = $row[0] ;
+					}
+				}
+				mysqli_free_result($table);
+				mysqli_close($conn);
+				return $res;
+			}
+
 
 			function isPassive(){
 				$result = true;
@@ -680,7 +708,7 @@
 					$_SESSION["log"] = $aText;
 				}
 				else{
-					$_SESSION["log"] .= $aText;
+					$_SESSION["log"] .= "<br>...<br>". $aText;
 				}
 			}
 
@@ -740,12 +768,29 @@
 					$res .= " - AS " . $_SESSION["username"];
 				
 					if(isset($_SESSION["world"])){
-						$res .= " - EDITING '" .  
-							$this->fetchWorldName($_SESSION["world"]) . "'";
+
+						$wName = $this->fetchWorldName($_SESSION["world"]);
+						if($wName === NULL OR $wNAme === ""){
+							unset($_SESSION["world"]);
+						}
+						else{
+							$res .= " - EDITING '" .  $wName . "'";
+						}
 					}
 					if(isset($_SESSION["SAVE_WORLD"])){
-						$res .= " - PLAYING '" .  
-							$this->fetchWorldName($_SESSION["SAVE_WORLD"]) . "'";
+						$wName = $this->fetchWorldName($_SESSION["SAVE_WORLD"]);
+						if($wName === NULL OR $wNAme === ""){
+							unset($_SESSION["SAVE_WORLD"]);
+							unset($_SESSION["SAVE_NAME"]);
+						}
+						else{
+							$res .= " - PLAYING '" .  
+							$this->fetchWorldName($_SESSION["SAVE_WORLD"]) . "'" .
+							" (" . $this->fetchWorldRating($_SESSION["SAVE_WORLD"]) . ")";
+						}
+					}
+					else{
+						unset($_SESSION["SAVE_NAME"]);
 					}
 					if(isset($_SESSION["SAVE_NAME"])){
 						$res .= " - ON SAVE '" .  
@@ -828,7 +873,7 @@
 				
 				$res = "";
 				$reqType = $_SERVER["REQUEST_METHOD"];
-				$res .= $reqType;
+				//$res .= $reqType;
 
 				
 				if($this->hasLog){
@@ -855,9 +900,10 @@
 					$this->appendLog($logText);
 					$res .= "<div class='right'>";
 					$res .= "<div class='loghead'> LOG </div>";
-					$res .= "<div class='logbody'>";
+					$res .= "<div class='logbody' id='logbody'>";
 					$res .= $_SESSION["log"];
 					$res .= "</div>";
+					$res .= "<script> var log = document.getElementById(\"logbody\");log.scrollTop = log.scrollHeight;</script>"; 
 					$res .= "</div>";
 				}
 
@@ -908,7 +954,7 @@
 						$this->etch($agErr);
 					}
 					
-					$this->etch($_SESSION["check"]);
+					//$this->etch($_SESSION["check"]);
 					$this->etch("</body>\n");
 					$this->etch("</html>\n");
 			}
@@ -927,6 +973,7 @@
 					$this->generateHTML($formResult);
 					$_SESSION["content"] = $this->echoText;
 					//$_SESSION["content"] = "LOL";
+					mysqli_free_result($formResult);
 					header("Location: " . $_SERVER["REQUEST_URI"],true,301);
 					exit();
 				}
@@ -934,14 +981,14 @@
 					if(isset($_SESSION["content"])){
 						$this->etch($_SESSION["content"]);
 						//echo $this->echoText;
-						echo isset($_SESSION["content"]);
+						//echo isset($_SESSION["content"]);
 						unset($_SESSION["content"]);
 					}
 					else{
 						$this->generateHTML(NULL);
 					}// */
 					echo $this->echoText;
-					echo $_SESSION["check"];
+					//echo $_SESSION["check"];
 					//$form0 = $this->formList[0];
 					//echo "<br>" . $form0->isPassive();
 					//echo "HAHA";
